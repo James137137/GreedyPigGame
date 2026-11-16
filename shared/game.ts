@@ -20,6 +20,7 @@ export interface GameState {
   paused: boolean;
   pot: number;
   rolls: number[];
+  totalRolls: number;
   turn: number;
   players: Player[];
   endReason: "bust" | "banked" | "teacher" | null;
@@ -50,7 +51,7 @@ export function createGame(code: string, rounds = 5): GameState {
   validateRounds(rounds);
   return {
     code, rounds, deathNumber: 1, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
-    turn: 0, players: [], endReason: null,
+    totalRolls: 0, turn: 0, players: [], endReason: null,
   };
 }
 
@@ -152,14 +153,18 @@ export function applyAction(state: GameState, actor: string, action: Action, rol
     }
     case "roll": {
       if (state.phase !== "playing" || state.paused) throw new GameError("roll_closed", "The die can only be rolled during play.");
-      const face = rollDie();
-      if (!Number.isInteger(face) || face < 1 || face > 6) throw new Error("Die source returned an invalid face.");
+      let face: number;
+      do {
+        face = rollDie();
+        if (!Number.isInteger(face) || face < 1 || face > 6) throw new Error("Die source returned an invalid face.");
+      } while (state.totalRolls < 2 && face === 1);
+      const totalRolls = state.totalRolls + 1;
       const rolls = [...state.rolls, face];
       if (face === state.deathNumber) {
         const players = state.players.map(player => player.status === "active" ? { ...player, status: "bust" as const } : player);
-        return closeRound({ ...state, pot: 0, rolls, players }, "bust");
+        return closeRound({ ...state, pot: 0, rolls, totalRolls, players }, "bust");
       }
-      return { ...state, pot: state.pot + face, rolls, turn: state.turn + 1 };
+      return { ...state, pot: state.pot + face, rolls, totalRolls, turn: state.turn + 1 };
     }
     case "bank": {
       const current = state.players.find(player => player.id === actor);

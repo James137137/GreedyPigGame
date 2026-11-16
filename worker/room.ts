@@ -69,7 +69,9 @@ export class GameRoom extends DurableObject<unknown> {
       if (row) {
         // Previous room snapshots always used 1 as the losing face.
         const saved = JSON.parse(row.game) as Omit<GameState, 'endReason'> & { endReason: GameState['endReason'] | 'one' };
-        this.game = { ...saved, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
+        // Older snapshots retain only the current round. Preserve normal odds for games already past round one.
+        const totalRolls = saved.totalRolls ?? (saved.round <= 1 ? saved.rolls.length : 2);
+        this.game = { ...saved, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
         this.expires = row.expires;
       }
     }

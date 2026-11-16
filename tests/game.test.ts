@@ -10,6 +10,22 @@ function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "ban
   return applyAction(state, "teacher", { type, turn: state.turn }, die === undefined ? undefined : () => die);
 }
 
+function openingRolls(state: GameState) {
+  return teacher(teacher(state, "roll", 2), "roll", 2);
+}
+
+test("only the first two rolls of the whole game exclude 1, even across a round change", () => {
+  let game = teacher(classroom(3, ["Maia"]), "start");
+  for (const face of [2, 6]) {
+    const samples = [1, 1, face];
+    game = applyAction(game, "teacher", { type: "roll", turn: game.turn }, () => samples.shift()!);
+    assert.deepEqual(game.rolls, [face]);
+    game = teacher(bank(game, "Maia"), "next");
+  }
+  assert.equal(game.totalRolls, 2);
+  assert.equal(teacher(game, "roll", 1).endReason, "bust");
+});
+
 function bank(state: GameState, name: string, turn = state.turn) {
   return applyAction(state, name, { type: "bank", turn });
 }
@@ -45,7 +61,7 @@ test("nicknames preserve Māori spelling, normalise equivalent forms and reject 
 
 test("every join rejects blocked nicknames before storing or displaying the submission", () => {
   const lobby = classroom();
-  const between = teacher(teacher(lobby, "start"), "roll", 1);
+  const between = teacher(openingRolls(teacher(lobby, "start")), "roll", 1);
   for (const state of [lobby, between]) {
     for (const name of ["FuCk", "Ｓｈｉｔ", "Player_f.u.c.k", "n1gg3r_42", "Fuсk", "S.h.1.t", "white power", "WhiteP0wer", "pórnhub", "d1ld0", "PlayerWankerrr", "c.u.n.t99"]) {
       assert.throws(() => addPlayer(state, "late", name), (error: unknown) =>
@@ -73,7 +89,7 @@ test("each configured death number busts, and all remaining faces add their face
     assert.equal(configured.deathNumber, deathNumber);
     let game = teacher(configured, "start");
     let expectedPot = 0;
-    for (let die = 1; die <= 6; die++) {
+    for (const die of [2, 3, 4, 5, 6, 1]) {
       if (die === deathNumber) continue;
       game = teacher(game, "roll", die);
       expectedPot += die;
@@ -138,12 +154,12 @@ test("bank locks the displayed pot for that student, a second bank cannot credit
 });
 
 test("a one closes the round, preserves banked points and loses only the unbanked pot", () => {
-  const offered = teacher(teacher(classroom(), "start"), "roll", 4);
+  const offered = openingRolls(teacher(classroom(), "start"));
   const result = teacher(bank(offered, "Hemi"), "roll", 1);
   assert.equal(result.phase, "between");
   assert.equal(result.endReason, "bust");
   assert.equal(result.pot, 0);
-  assert.deepEqual(result.rolls, [4, 1]);
+  assert.deepEqual(result.rolls, [2, 2, 1]);
   assert.deepEqual(result.players.map(p => [p.status, p.score, p.banked]), [["bust", 0, 0], ["banked", 4, 4]]);
   assert.throws(() => teacher(result, "roll", 2), fails("roll_closed"));
   const next = teacher(result, "next");
@@ -166,7 +182,7 @@ test("concurrent banks at one turn all succeed once, and the last closes the fin
 });
 
 test("bank vs losing roll is resolved by server order; stale bank never claims a later pot", () => {
-  const offered = teacher(teacher(classroom(), "start"), "roll", 4);
+  const offered = openingRolls(teacher(classroom(), "start"));
   const bankFirst = teacher(bank(offered, "Hemi"), "roll", 1);
   assert.equal(bankFirst.players[1].score, 4);
   const rollFirst = teacher(offered, "roll", 1);
@@ -205,7 +221,7 @@ test("capacity is exactly 100 and late arrivals join between rounds", () => {
   assert.throws(() => addPlayer(full, "late", "Late"), fails("room_full"));
   const started = teacher(classroom(), "start");
   assert.throws(() => addPlayer(started, "late", "Late"), fails("join_closed"));
-  const between = teacher(started, "roll", 1);
+  const between = teacher(openingRolls(started), "roll", 1);
   const joined = addPlayer(between, "late", "Late");
   assert.equal(joined.players.at(-1)?.status, "waiting");
   assert.equal(teacher(joined, "next").players.at(-1)?.status, "active");

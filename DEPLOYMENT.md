@@ -86,7 +86,7 @@ To add automatic updates to this existing Worker, open **Workers & Pages → gre
 Use the production URL on your teacher laptop and the school Wi-Fi. Two separate student devices or browser profiles let you observe banking and losing in the same round.
 
 1. Create a room. In the waiting room select two rounds, keep the death number at 1 and save the settings. On one student device scan the QR code. On another device enter the six digits manually. Use different nicknames. Confirm both appear on the teacher screen.
-2. Start the game and roll. After a 2–6, have only the first student bank. Check that their total increases by the displayed pot exactly once. The other player should remain active. If the first roll is a 1, start the next round or a fresh rehearsal.
+2. Start the game and roll. After a 2–6, have only the first student bank. Check that their total increases by the displayed pot exactly once. The other player should remain active.
 3. Pause the game, confirm play is paused on the student screens, then resume. Roll until a 1. Check that the first student keeps their banked score and the second earns zero for that round.
 4. Refresh the teacher page in the same browser profile. Close and reopen a student's game in the same profile. Briefly turn that student's Wi-Fi off, then back on. Confirm the teacher still has controls, the returning player's name appears once and their score survives.
 5. Play the last round. Have everyone bank once there are points and check that it ends. Compare the final rankings and ties across the screens. Start a fresh game before the actual class.

@@ -22,7 +22,7 @@ function Rules({ face, onClose }: { face: number; onClose: () => void }) {
       <h2 id="rules-title">How to play</h2>
       <ol>
         <li><strong>Join the room.</strong> Enter the teacher’s six-digit code or scan the QR code. Choose a classroom-friendly nickname.</li>
-        <li><strong>Watch the rolls.</strong> Each safe roll adds its face value to the shared round pot.</li>
+        <li><strong>Watch the rolls.</strong> The first two rolls of the game are always 2–6. Each safe roll adds its face value to the shared round pot.</li>
         <li><strong>Bank or keep playing.</strong> Press Bank to keep the current pot and sit out until next round. Your teacher decides when to roll again.</li>
         <li><strong>Watch out for {face}.</strong> The death number ends the round. Anyone still playing loses their unbanked points.</li>
       </ol>
