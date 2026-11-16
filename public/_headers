@@ -1,0 +1,6 @@
+/*
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' wss://*.workers.dev ws://127.0.0.1:8787 ws://localhost:8787; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'
