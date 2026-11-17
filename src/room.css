@@ -256,3 +256,5 @@
 .noise-reading { justify-self: end; text-align: right; }
 .noise-reading strong { display: block; font: 700 clamp(24px,4vw,48px)/1.2 var(--display); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .noise-liquid { transition: none; } }
+.noise-scale { position: relative; min-width: 7em; }
+.noise-limit-mark { position: absolute; transform: translateY(50%); font-size: .82em; }

@@ -98,6 +98,7 @@ export function useRoomConnection(identity: Identity | null, onEnd: (message: st
           attempts = 0;
           // Translate the server deadline to the browser clock when the snapshot arrives.
           const state = msg.state as GameState;
+          if (state.graceUntil) state.graceUntil += Date.now() - msg.serverNow;
           if (state.nextRollAt != null) state.nextRollAt += Date.now() - msg.serverNow;
           setSnapshot({ state, online: msg.online });
           setConnected(true);

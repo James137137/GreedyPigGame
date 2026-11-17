@@ -79,7 +79,7 @@ export class GameRoom extends DurableObject<unknown> {
         const saved = JSON.parse(row.game) as Omit<GameState, 'endReason'> & { endReason: GameState['endReason'] | 'one' };
         // Older snapshots retain only the current round. Preserve normal odds for games already past round one.
         const totalRolls = saved.totalRolls ?? (saved.round <= 1 ? saved.rolls.length : 2);
-        this.game = { ...saved, quietMode: saved.quietMode ?? false, noiseLosses: saved.noiseLosses ?? 0, restoredRounds: saved.restoredRounds ?? 0, lastNoiseLossAt: saved.lastNoiseLossAt ?? null, autoRoll: saved.autoRoll ?? false, nextRollAt: saved.nextRollAt ?? null, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
+        this.game = { ...saved, graceUntil: saved.graceUntil ?? 0, quietMode: saved.quietMode ?? false, noiseLosses: saved.noiseLosses ?? 0, restoredRounds: saved.restoredRounds ?? 0, lastNoiseLossAt: saved.lastNoiseLossAt ?? null, autoRoll: saved.autoRoll ?? false, nextRollAt: saved.nextRollAt ?? null, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
         this.expires = row.expires;
       }
     }

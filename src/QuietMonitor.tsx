@@ -11,6 +11,16 @@ export function QuietMonitor(props: Props) {
   const [level, setLevel] = useState(0);
   const [progress, setProgress] = useState(0);
   const [quietSeconds, setQuietSeconds] = useState(0);
+  const [limit, setLimit] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('quiet-noise-limit'));
+      if (saved >= 10 && saved <= 90) return saved;
+    } catch { /* Storage is optional. */ }
+    return 50;
+  });
+  const threshold = useRef(limit);
+  threshold.current = limit;
+  const [grace, setGrace] = useState(0);
   const latest = useRef(props);
   latest.current = props;
   const { state, connected } = props;
@@ -66,16 +76,18 @@ export function QuietMonitor(props: Props) {
           if (receiving) analyser.getFloatTimeDomainData(data);
           const volume = receiving ? microphoneLevel(data) : 0;
           setLevel(Math.round(volume * 100));
+          const remaining = Math.max(0, game.graceUntil - Date.now());
+          setGrace(Math.ceil(remaining / 1000));
           const missing = game.noiseLosses - game.restoredRounds;
           quietMs = receiving && game.phase === 'playing' && !game.paused && missing > 0
-            ? quietStreakMs(quietMs, volume, elapsed) : 0;
+            ? quietStreakMs(quietMs, volume, elapsed, threshold.current / 100) : 0;
           setQuietSeconds(Math.floor(quietMs / 1000));
           if (quietMs >= NOISE_WINDOW_MS && !busy && now >= retryAfter) {
             retryAfter = now + 1500;
             onAction({ type: 'quietRestore', turn: game.turn, expectedLosses: losses });
           }
-          if (receiving && game.phase === 'playing' && !game.paused && game.round < game.rounds && elapsed < 1000) {
-            fill = noiseProgress(fill, volume, elapsed);
+          if (!remaining && receiving && game.phase === 'playing' && !game.paused && game.round < game.rounds && elapsed < 1000) {
+            fill = noiseProgress(fill, volume, elapsed, threshold.current / 100);
             if (fill >= 1 && !busy && now >= retryAfter) {
               retryAfter = now + 1500;
               onAction({ type: 'noisePenalty', turn: game.turn, expectedLosses: losses });
@@ -95,13 +107,19 @@ export function QuietMonitor(props: Props) {
   return <section className="room-box quiet-panel">
     <h2>Classroom noise</h2>
     <p className="room-copy">Sustained noise fills the meter. A full meter removes one future round. Stay quiet for 20 seconds to earn back all missing rounds. Audio stays on this device.</p>
-    <div className="room-actions"><button className="room-button room-minor" type="button" onClick={() => { setError(''); setEnabled(!enabled); }}>{enabled ? 'Stop microphone' : 'Start microphone'}</button><span>{enabled && !listening ? 'Waiting for microphone…' : status}</span></div>
+    <div className="room-actions"><button className="room-button room-minor" type="button" onClick={() => { setError(''); setEnabled(!enabled); }}>{enabled ? 'Stop microphone' : 'Start microphone'}</button><span>{enabled && !listening ? 'Waiting for microphone…' : listening && grace > 0 ? `Reaction break · ${grace}s` : status}</span></div>
     {error && <p className="room-error" role="alert">{error}</p>}
     <div className="noise-gauge" role="meter" aria-label="Room volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level} aria-valuetext={listening ? level + ' percent' : 'Microphone off'}>
       <div className="noise-glass" aria-hidden="true"><div className="noise-liquid" style={{height: level + '%'}} /></div>
-      <div className="noise-scale" aria-hidden="true"><span>Loud</span><span>Halfway</span><span>Quiet</span></div>
+      <div className="noise-scale" aria-hidden="true"><span>Loud</span><span className="noise-limit-mark" style={{bottom: limit + '%'}}>Limit {limit}%</span><span>Quiet</span></div>
       <div className="noise-reading"><small>Room volume</small><strong>{listening ? level + '%' : 'Off'}</strong></div>
     </div>
+    <label>Acceptable noise limit · {limit}%<input type="range" min="10" max="90" step="1" value={limit} onChange={e => {
+      const value = Number(e.target.value);
+      setLimit(value);
+      try { localStorage.setItem('quiet-noise-limit', String(value)); } catch { /* Keep the session preference. */ }
+    }} /></label>
+    <p className="room-copy">Move right to allow a louder room. After a death roll, the class gets five seconds to react.</p>
     <label>Round-loss meter · {progress}% <progress value={progress} max={100} /></label>
     {state.noiseLosses > state.restoredRounds && <label>Earn back {state.noiseLosses - state.restoredRounds} · {quietSeconds} / 20 quiet seconds <progress value={quietSeconds} max={20} /></label>}
   </section>;

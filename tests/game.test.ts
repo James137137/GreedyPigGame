@@ -340,6 +340,20 @@ test("twenty quiet seconds restore exactly the original configured total", () =>
     assert.equal(applyAction(reduced, "teacher", { ...restore, expectedLosses: 3 }, undefined, 100_000).rounds, maximum);
   }
   assert.equal(quietStreakMs(19_800, 0.49, 200), 20_000);
-  assert.equal(quietStreakMs(19_800, 0.5, 200), 0);
+  assert.equal(quietStreakMs(19_800, 0.51, 200), 0);
   assert.equal(quietStreakMs(19_800, 0, 2000), 0);
+});
+
+test("noise tolerance controls recovery and loss; a quick restart preserves the bust grace period", () => {
+  assert.ok(noiseProgress(0.5, 0.6, 200, 0.4) > 0.5);
+  assert.ok(noiseProgress(0.5, 0.6, 200, 0.8) < 0.5);
+  assert.equal(quietStreakMs(1000, 0.6, 200, 0.8), 1200);
+  let s = classroom();
+  s = applyAction(s, "teacher", { type: "quietMode", enabled: true, turn: s.turn });
+  s = teacher(s, "start");
+  for (const face of [3, 4, 1]) s = applyAction(s, "teacher", { type: "roll", turn: s.turn }, () => face, 10000);
+  s = teacher(s, "next");
+  const penalty = { type: "noisePenalty", expectedLosses: 0, turn: s.turn } as const;
+  assert.throws(() => applyAction(s, "teacher", penalty, undefined, 14999), fails("noise_closed"));
+  assert.equal(applyAction(s, "teacher", penalty, undefined, 15000).rounds, 19);
 });

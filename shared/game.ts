@@ -20,6 +20,7 @@ export interface GameState {
   quietMode: boolean;
   noiseLosses: number;
   restoredRounds: number;
+  graceUntil: number;
   lastNoiseLossAt: number | null;
   round: number;
   phase: "lobby" | "playing" | "between" | "finished";
@@ -61,7 +62,7 @@ export function createGame(code: string, rounds = 5): GameState {
   }
   validateRounds(rounds);
   return {
-    code, rounds, deathNumber: 1, quietMode: false, noiseLosses: 0, restoredRounds: 0, lastNoiseLossAt: null, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
+    code, rounds, deathNumber: 1, quietMode: false, graceUntil: 0, noiseLosses: 0, restoredRounds: 0, lastNoiseLossAt: null, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
     autoRoll: false, nextRollAt: null, totalRolls: 0, turn: 0, players: [], endReason: null,
   };
 }
@@ -181,7 +182,7 @@ function transition(state: GameState, actor: string, action: Action, rollDie: ()
       return { ...state, rounds: state.rounds + missing, restoredRounds: state.noiseLosses };
     }
     case "noisePenalty":
-      if (!state.quietMode || state.phase !== "playing" || state.paused || state.rounds <= state.round
+      if (!state.quietMode || state.phase !== "playing" || state.paused || now < state.graceUntil || state.rounds <= state.round
         || action.expectedLosses !== state.noiseLosses
         || (state.lastNoiseLossAt !== null && now - state.lastNoiseLossAt < NOISE_WINDOW_MS)) {
         throw new GameError("noise_closed", "A round cannot be removed right now.");
@@ -219,7 +220,7 @@ function transition(state: GameState, actor: string, action: Action, rollDie: ()
       const rolls = [...state.rolls, face];
       if (face === state.deathNumber) {
         const players = state.players.map(player => player.status === "active" ? { ...player, status: "bust" as const } : player);
-        return closeRound({ ...state, pot: 0, rolls, totalRolls, players }, "bust");
+        return closeRound({ ...state, pot: 0, rolls, totalRolls, players, graceUntil: now + 5000 }, "bust");
       }
       return { ...state, pot: state.pot + face, rolls, totalRolls, turn: state.turn + 1 };
     }

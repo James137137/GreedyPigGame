@@ -8,12 +8,12 @@ export function microphoneLevel(samples: Float32Array): number {
   return Math.min(1, Math.max(0, (db + 60) / 48));
 }
 
-export function quietStreakMs(previous: number, level: number, elapsedMs: number): number {
-  if (level >= 0.5 || elapsedMs >= 1000) return 0;
+export function quietStreakMs(previous: number, level: number, elapsedMs: number, limit = 0.5): number {
+  if (level > limit || elapsedMs >= 1000) return 0;
   return Math.min(NOISE_WINDOW_MS, previous + elapsedMs);
 }
 
-export function noiseProgress(previous: number, level: number, elapsedMs: number): number {
-  // Below halfway, quiet drains the meter. Above halfway, louder fills it faster.
-  return Math.min(1, Math.max(0, previous + (2 * level - 1) * elapsedMs / NOISE_WINDOW_MS));
+export function noiseProgress(previous: number, level: number, elapsedMs: number, limit = 0.5): number {
+  const rate = (level - limit) / (level > limit ? 1 - limit : limit);
+  return Math.min(1, Math.max(0, previous + rate * elapsedMs / NOISE_WINDOW_MS));
 }
