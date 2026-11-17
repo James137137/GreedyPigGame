@@ -21,9 +21,9 @@ function Rules({ face, onClose }: { face: number; onClose: () => void }) {
     <div className="rules-inner">
       <h2 id="rules-title">How to play</h2>
       <ol>
-        <li><strong>Join the room.</strong> Enter the teacher’s six-digit code or scan the QR code. Choose a classroom-friendly nickname.</li>
+        <li><strong>Join the room.</strong> Open the game on your computer, enter the teacher’s six-digit code, and choose a classroom-friendly nickname.</li>
         <li><strong>Watch the rolls.</strong> The first two rolls of the game are always 2–6. Each safe roll adds its face value to the shared round pot.</li>
-        <li><strong>Bank or keep playing.</strong> Press Bank to keep the current pot and sit out until next round. Your teacher decides when to roll again.</li>
+        <li><strong>Save or keep playing.</strong> Tap Save to keep the points on offer and sit out until the next round. With Auto-roll on, the countdown shows how long you have to decide.</li>
         <li><strong>Watch out for {face}.</strong> The death number ends the round. Anyone still playing loses their unbanked points.</li>
       </ol>
       <p>The highest total wins. Players with equal scores share their rank.</p>
@@ -130,7 +130,8 @@ export function App() {
     </div></header>
     {identity ? (live.snapshot ?
       <Room state={live.snapshot.state} online={live.snapshot.online} identity={identity} connected={live.connected}
-        busy={live.busy} error={live.error || error} onAction={live.send} onNewRoom={() => leave('')} />
+        busy={live.busy} error={live.error || error} onAction={live.send} onNewRoom={() => leave('')}
+        sound={sound} onToggleSound={toggleSound} onShowRules={() => setHelp(true)} />
       : <main className="shell-width connecting-room"><h1>Connecting to room {identity.code}</h1><p role="status">Waiting for the live game board…</p><button className="header-action" onClick={() => leave('')}>Back to lobby</button></main>)
       : <>
         {restoreFailed && <div className="shell-width retry-room"><button type="button" className="header-action" disabled={working} onClick={() => setRetry(n => n + 1)}>Reconnect to room {firstCode}</button></div>}

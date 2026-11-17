@@ -17,7 +17,7 @@ npm.cmd run dev
 2. Open the same address in a private window or a second browser profile. Enter the room code and a nickname under **Join a game**. Ordinary tabs in one profile share the same identity for that room.
 3. Start a round in the teacher window. The first two rolls of the whole game draw from 2–6. From the third roll, all six faces are possible. Roll, then bank from the student window when there are points in the pot. Both screens should show the same total.
 
-Wrangler runs the Worker, assets, WebSockets and SQLite room storage locally. Local simulation requires no Cloudflare account or secrets. Leave the terminal running while you play. Press **Ctrl+C** to stop. Wrangler keeps local room data under `.wrangler/state`. Classroom devices need the deployed HTTPS address. A QR containing `127.0.0.1` sends each phone to its own device.
+Wrangler runs the Worker, assets, WebSockets and SQLite room storage locally. Local simulation requires no Cloudflare account or secrets. Leave the terminal running while you play. Press **Ctrl+C** to stop. Wrangler keeps local room data under `.wrangler/state`. Classroom devices need the deployed HTTPS address.
 
 ## Develop and test
 

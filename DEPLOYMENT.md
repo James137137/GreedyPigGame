@@ -85,7 +85,7 @@ To add automatic updates to this existing Worker, open **Workers & Pages → gre
 
 Use the production URL on your teacher laptop and the school Wi-Fi. Two separate student devices or browser profiles let you observe banking and losing in the same round.
 
-1. Create a room. In the waiting room select two rounds, keep the death number at 1 and save the settings. On one student device scan the QR code. On another device enter the six digits manually. Use different nicknames. Confirm both appear on the teacher screen.
+1. Create a room. In the waiting room select two rounds, keep the death number at 1 and save the settings. On one student computer, open the game and enter the six-digit room code. On another, open the link from **Copy join link**. Use different nicknames. Confirm both appear on the teacher screen.
 2. Start the game and roll. After a 2–6, have only the first student bank. Check that their total increases by the displayed pot exactly once. The other player should remain active.
 3. Pause the game, confirm play is paused on the student screens, then resume. Roll until a 1. Check that the first student keeps their banked score and the second earns zero for that round.
 4. Refresh the teacher page in the same browser profile. Close and reopen a student's game in the same profile. Briefly turn that student's Wi-Fi off, then back on. Confirm the teacher still has controls, the returning player's name appears once and their score survives.
@@ -127,5 +127,4 @@ In Cloudflare, open the Worker’s **Builds** history. Match the commit, check t
 | A deploy reports a missing class or a free-plan storage error | Check the Worker class export, Durable Object binding and SQLite class declaration in the checked-in configuration match. Use the project's local Wrangler through `npx`, run a full deploy and inspect the first error in the log. |
 | Page loads but game creation fails | Use the production URL shown under Domains & Routes. Check the Worker bindings, live error log and account quotas while creating a new room. |
 | School devices can load the page but cannot join or stay connected | Compare the same URL on a mobile hotspot. If only the school connection fails, give IT the exact production hostname and ask them to check HTTPS and secure WebSocket upgrades over port 443. |
-| A QR code opens an unreachable address | Create the room on the public HTTPS address. A QR generated on localhost points each phone back at itself. |
 | The teacher returns without controls | Reopen the room in the same browser profile on the device used to create it. Clearing its site data removes the private session. If you have lost it, create a new game. |

@@ -1,12 +1,12 @@
-.rules-dialog { width: min(460px, calc(100% - 32px)); padding: 0; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 100px #000a; }
+.rules-dialog { width: min(460px, calc(100% - 32px)); padding: 0; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 24px 100px #21144c26; }
 .rules-dialog::backdrop { background: #0b0816b8; }
 .rules-inner { padding: clamp(20px, 4vw, 34px); }
 .rules-inner h2, .connecting-room h1 { font: 700 2.2rem/1.1 var(--display); margin: 0 0 20px; }
 .rules-inner ol { padding-left: 1.35em; line-height: 1.5; }
 .rules-inner li { padding-left: .35em; margin: 12px 0; }
-.rules-inner li::marker { color: var(--lime); font: 700 .95em var(--mono); }
+.rules-inner li::marker { color: var(--purple); font: 700 .95em var(--mono); }
 .rules-inner p { color: var(--muted); }
-.shell-button { padding: 12px 20px; background: var(--lime); border: 0; border-radius: 6px; color: #15121d; font-weight: 700; cursor: pointer; }
+.shell-button { padding: 12px 20px; background: var(--purple); border: 0; border-radius: 12px; color: white; font-weight: 700; cursor: pointer; }
 .connecting-room, .retry-room { padding-block: 2rem; }
 @media(max-width:460px) { .header-action[aria-pressed] span { display: none; } }
 .brand-home { display: inline-flex; padding: 0; background: none; border: 0; color: inherit; }

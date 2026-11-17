@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import './quiet.css';
 import { NOISE_WINDOW_MS, type Action, type GameState } from '../shared/game';
 import { microphoneLevel, noiseProgress, quietStreakMs } from '../shared/noise';
 
-type Props = { state: GameState; busy: boolean; connected: boolean; onAction: (action: Action) => void };
+interface Props {
+  state: GameState;
+  busy: boolean;
+  connected: boolean;
+  onAction: (action: Action) => void;
+  settingsTarget?: HTMLElement | null;
+}
 
 export function QuietMonitor(props: Props) {
   const [enabled, setEnabled] = useState(false);
@@ -112,30 +120,74 @@ export function QuietMonitor(props: Props) {
     return () => { cancelled = true; stop(); };
   }, [enabled]);
 
-  const status = !listening ? 'Monitoring off' : !connected || state.paused ? 'Meter paused' : state.phase === 'lobby' ? 'Mic preview' : state.round >= state.rounds ? 'Final round protected' : state.phase === 'between' ? 'Between rounds' : 'Listening';
-  return <section className="room-box quiet-panel">
-    <h2>Classroom noise</h2>
-    <p className="room-copy">Sustained noise fills the meter. A full meter removes one future round. Stay quiet for 20 seconds to earn back all missing rounds. Audio stays on this device.</p>
-    <div className="room-actions"><button className="room-button room-minor" type="button" onClick={() => { setError(''); setEnabled(!enabled); }}>{enabled ? 'Stop microphone' : 'Start microphone'}</button><span>{enabled && !listening ? 'Waiting for microphone…' : listening && grace > 0 ? `Reaction break · ${grace}s` : status}</span></div>
-    {error && <p className="room-error" role="alert">{error}</p>}
-    <div className="noise-gauge" role="meter" aria-label="Room volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level} aria-valuetext={listening ? level + ' percent' : 'Microphone off'}>
-      <div className="noise-glass" aria-hidden="true"><div className="noise-liquid" style={{height: level + '%'}} /></div>
-      <div className="noise-scale" aria-hidden="true"><span>Loud</span><span className="noise-limit-mark" style={{bottom: limit + '%'}}>Limit {limit}%</span><span>Quiet</span></div>
-      <div className="noise-reading"><small>Room volume</small><strong>{listening ? level + '%' : 'Off'}</strong></div>
+  const outstanding = state.noiseLosses - state.restoredRounds;
+  const protectedRound = state.round >= state.rounds && state.phase !== 'lobby';
+  const paused = !connected || state.paused;
+  const reacting = listening && grace > 0;
+  const status = !listening ? (enabled ? 'Starting microphone…' : 'Mic off')
+    : reacting ? `Reaction break · ${grace}s`
+    : paused ? 'Meter paused'
+    : state.phase === 'lobby' ? 'Mic preview'
+    : protectedRound ? 'Final round protected'
+    : state.phase === 'between' ? 'Between rounds' : 'Listening';
+
+  function toggleMicrophone() {
+    setError('');
+    setEnabled(active => !active);
+  }
+
+  const settings = <fieldset className="quiet-settings">
+    <legend>Microphone settings</legend>
+    <label>
+      <span>Top of thermometer <b>{loudDb} dBFS</b></span>
+      <input type="range" min="-36" max="0" step="1" value={loudDb} aria-valuetext={loudDb + ' decibels full scale'} onChange={e => {
+        const value = Number(e.target.value);
+        setLoudDb(value);
+        try { localStorage.setItem('quiet-loud-db', String(value)); } catch { /* Storage is optional. */ }
+      }} />
+      <small>Move right if ordinary chatter reaches the top too easily.</small>
+    </label>
+    <label>
+      <span>Acceptable limit <b>{limit}%</b></span>
+      <input type="range" min="10" max="90" step="1" value={limit} aria-valuetext={limit + ' percent'} onChange={e => {
+        const value = Number(e.target.value);
+        setLimit(value);
+        try { localStorage.setItem('quiet-noise-limit', String(value)); } catch { /* Storage is optional. */ }
+      }} />
+      <small>Noise above this line builds toward losing one future round. A death roll gives the class five seconds to react.</small>
+    </label>
+    <p>Twenty quiet seconds earn back all missing rounds. Microphone audio stays on this device.</p>
+    <button type="button" className="quiet-action" onClick={toggleMicrophone}>{enabled ? 'Stop microphone' : 'Start microphone'}</button>
+  </fieldset>;
+
+  return <section className="quiet-card" aria-label="Quiet Mode">
+    <header className="quiet-header">
+      <h2>Quiet Mode</h2>
+      <span className={'quiet-status' + (reacting ? ' quiet-break' : listening && !paused ? ' quiet-live' : '')} role="status"><i aria-hidden="true" />{status}</span>
+    </header>
+    <div className="quiet-display">
+      <div className={'quiet-thermometer' + (!listening ? ' quiet-off' : level > limit ? ' quiet-loud' : '')}
+        role="meter" aria-label="Room noise" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level}
+        aria-valuetext={listening ? level + ' percent' : 'Microphone off'}>
+        <div className="quiet-track"><div className="quiet-fill" style={{ height: level + '%' }} /></div>
+        <div className="quiet-bulb" />
+        <div className="quiet-marker" style={{ bottom: limit + '%' }} />
+      </div>
+      <div className="quiet-readings">
+        <div className="quiet-reading">
+          <span>Room noise</span>
+          <strong className={level > limit ? 'quiet-above-limit' : ''}>{listening ? level : '—'}{listening && <small>%</small>}</strong>
+        </div>
+        <p className="quiet-limit"><i aria-hidden="true" />Acceptable limit <b>{limit}%</b></p>
+        {!enabled && <button type="button" className="quiet-action" onClick={toggleMicrophone}>Start microphone</button>}
+      </div>
     </div>
-    <label>Top of thermometer (Loud) � {loudDb} dBFS<input type="range" min="-36" max="0" step="1" value={loudDb} onChange={e => {
-      const value = Number(e.target.value);
-      setLoudDb(value);
-      try { localStorage.setItem('quiet-loud-db', String(value)); } catch { /* Keep the session preference. */ }
-    }} /></label>
-    <p className="room-copy">Move right if the thermometer reaches the top too easily. Move left if it barely rises.</p>
-    <label>Acceptable noise limit · {limit}%<input type="range" min="10" max="90" step="1" value={limit} onChange={e => {
-      const value = Number(e.target.value);
-      setLimit(value);
-      try { localStorage.setItem('quiet-noise-limit', String(value)); } catch { /* Keep the session preference. */ }
-    }} /></label>
-    <p className="room-copy">Move right to allow a louder room. After a death roll, the class gets five seconds to react.</p>
-    <label>Round-loss meter · {progress}% <progress value={progress} max={100} /></label>
-    {state.noiseLosses > state.restoredRounds && <label>Earn back {state.noiseLosses - state.restoredRounds} · {quietSeconds} / 20 quiet seconds <progress value={quietSeconds} max={20} /></label>}
+    {error && <p className="quiet-error" role="alert">{error}</p>}
+    {listening && state.phase !== 'lobby' && <div className="quiet-progress">
+      {!protectedRound && <label><span>Round-loss meter <b>{progress}%</b></span><progress value={progress} max={100} /></label>}
+      {outstanding > 0 && <label><span>Earn back {outstanding} {outstanding === 1 ? 'round' : 'rounds'} <b>{quietSeconds} / 20s</b></span><progress value={quietSeconds} max={20} /></label>}
+    </div>}
+    {props.settingsTarget ? createPortal(settings, props.settingsTarget) :
+      <details className="quiet-settings-disclosure"><summary>Microphone settings</summary>{settings}</details>}
   </section>;
 }
