@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { addPlayer, applyAction, createGame, GameError, type Action, type GameState } from '../shared/game';
+import { addPlayer, applyAction, rollIfDue, createGame, GameError, type Action, type GameState } from '../shared/game';
 import { InvalidRequest, isRecord, json, problem, readForm } from './http';
 
 const LIFETIME = 24 * 60 * 60 * 1000;
@@ -31,7 +31,7 @@ function actionFrom(input: unknown): Action {
   }
   const { type, turn } = input;
   // Accept only the parameters belonging to this command.
-  const fields = type === 'configure' ? ['rounds', 'deathNumber'] : type === 'remove' ? ['playerId'] : [];
+  const fields = type === 'autoRoll' ? ['enabled'] : type === 'configure' ? ['rounds', 'deathNumber'] : type === 'remove' ? ['playerId'] : [];
   if (Object.keys(input).some(key => key !== 'type' && key !== 'turn' && !fields.includes(key))) {
     throw new InvalidRequest(400, 'Unexpected game action parameters.');
   }
@@ -40,6 +40,9 @@ function actionFrom(input: unknown): Action {
       return { type, turn };
     case 'remove':
       if (typeof input.playerId === 'string' && input.playerId.length <= 64) return { type, turn, playerId: input.playerId };
+      break;
+    case 'autoRoll':
+      if (typeof input.enabled === 'boolean') return { type, turn, enabled: input.enabled };
       break;
     case 'configure':
       if (typeof input.rounds === 'number' && typeof input.deathNumber === 'number') {
@@ -71,7 +74,7 @@ export class GameRoom extends DurableObject<unknown> {
         const saved = JSON.parse(row.game) as Omit<GameState, 'endReason'> & { endReason: GameState['endReason'] | 'one' };
         // Older snapshots retain only the current round. Preserve normal odds for games already past round one.
         const totalRolls = saved.totalRolls ?? (saved.round <= 1 ? saved.rolls.length : 2);
-        this.game = { ...saved, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
+        this.game = { ...saved, autoRoll: saved.autoRoll ?? false, nextRollAt: saved.nextRollAt ?? null, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
         this.expires = row.expires;
       }
     }
@@ -188,7 +191,7 @@ export class GameRoom extends DurableObject<unknown> {
       const { actor } = socket.deserializeAttachment() as SocketIdentity;
       if (actor !== 'teacher') online.add(actor);
     }
-    return JSON.stringify({ type: 'state', state: this.game, online: [...online] });
+    return JSON.stringify({ type: 'state', serverNow: Date.now(), state: this.game, online: [...online] });
   }
 
   private send(socket: WebSocket, payload: string) {
@@ -269,7 +272,9 @@ export class GameRoom extends DurableObject<unknown> {
         sql.exec('INSERT INTO receipts (actor, request_id) VALUES (?, ?)', actor, requestId);
         if (action.type === 'remove') sql.exec('UPDATE sessions SET revoked = 1 WHERE actor = ?', action.playerId);
       });
+      const deadlineChanged = this.game.nextRollAt !== next.nextRollAt;
       this.game = next;
+      if (deadlineChanged) this.ctx.waitUntil(this.scheduleAlarm());
       if (action.type === 'remove') {
         for (const removed of this.ctx.getWebSockets(action.playerId)) {
           if (removed.readyState === OPEN) removed.close(4003, 'Removed by teacher.');
@@ -290,9 +295,19 @@ export class GameRoom extends DurableObject<unknown> {
     this.scheduleBroadcast();
   }
 
+  private scheduleAlarm() {
+    return this.ctx.storage.setAlarm(Math.min(this.expires, this.game?.nextRollAt ?? this.expires));
+  }
+
   async alarm() {
     if (this.game && Date.now() < this.expires) {
-      await this.ctx.storage.setAlarm(this.expires);
+      const next = rollIfDue(this.game, Date.now());
+      if (next !== this.game) {
+        this.writeGame(next);
+        this.game = next;
+        this.scheduleBroadcast();
+      }
+      await this.scheduleAlarm();
       return;
     }
     await this.ctx.blockConcurrencyWhile(async () => {

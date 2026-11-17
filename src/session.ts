@@ -96,7 +96,10 @@ export function useRoomConnection(identity: Identity | null, onEnd: (message: st
         if (msg.type === 'state') {
           clearTimeout(watchdog);
           attempts = 0;
-          setSnapshot({ state: msg.state, online: msg.online });
+          // Translate the server deadline to the browser clock when the snapshot arrives.
+          const state = msg.state as GameState;
+          if (state.nextRollAt != null) state.nextRollAt += Date.now() - msg.serverNow;
+          setSnapshot({ state, online: msg.online });
           setConnected(true);
         } else if (msg.type === 'error' || msg.type === 'ack') {
           if (msg.type === 'error') setError(msg.message || 'The room could not accept that move.');

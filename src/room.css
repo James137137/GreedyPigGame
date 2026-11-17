@@ -202,7 +202,11 @@
 .room-projector .room-name strong, .room-projector .room-score { font-size: clamp(17px, 1.5vw, 26px); }
 .room-projector .room-kicker { font-size: clamp(11px, .93vw, 16px); }
 .room-projector .room-controls p, .room-projector .room-copy { font-size: clamp(16px, 1.3vw, 23px); }
-@keyframes room-die-in { from { transform: translateY(-4px) rotate(9deg); } to { transform: translateY(0) rotate(-5deg); } }
+.room-auto { display: flex; align-items: center; gap: .65em; padding: .65em 0; font-weight: 600; cursor: pointer; }
+.room-auto input { width: 20px; height: 20px; accent-color: var(--lime); }
+.room-countdown { grid-column: 1 / -1; color: var(--lime); font-variant-numeric: tabular-nums; text-align: center; }
+.room-countdown strong { font-size: 1.6em; }
+@keyframes room-die-in { from { transform: translateY(-9px) rotate(-65deg); } 70% { transform: translateY(1px) rotate(8deg); } to { transform: translateY(0) rotate(-5deg); } }
 @media (max-width: 880px) {
   .room-grid { grid-template-columns: minmax(0, 1.45fr) minmax(240px, 1fr); gap: 14px; }
   .room-content { width: calc(100% - 36px); }

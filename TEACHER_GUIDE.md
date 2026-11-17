@@ -11,6 +11,8 @@ You need the deployed HTTPS game address, a teacher laptop and a browser on each
 
 ## Play a round
 
+For timed play, tick **Auto-roll every 10 seconds** before starting or during play. Everyone sees the countdown. Each round starts with a full ten seconds, and banking stays open until the deadline. Pause stops the clock; resuming gives everyone a fresh ten seconds. You still start each new round.
+
 1. Select **Roll die**. The first two rolls of the whole game are equally likely to show any number from 2 to 6. From the third roll, all six faces are equally likely. A custom death number from 2 to 6 can still end a round on an opening roll. Every face other than the death number adds its value to the shared pot. For example, if you set the death number to 6, rolling a 1 earns one point. Each active student's screen shows the current offer.
 2. Give the class time to decide. A student who selects **Bank** collects the entire displayed pot once. Their total updates immediately when the room accepts the bank. Everyone else can still choose for themselves.
 3. Roll again when ready. When the die shows the **death number**, everyone still active earns zero for this round. Previous banked points are safe. The round also ends as soon as everyone has banked.

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addPlayer, applyAction, createGame, GameError, normalizeNickname, ranks, type Action, type GameState } from "../shared/game";
+import { addPlayer, applyAction, createGame, GameError, normalizeNickname, ranks, rollIfDue, type Action, type GameState } from "../shared/game";
 
 function classroom(rounds = 2, names = ["Aroha", "Hemi"]): GameState {
   return names.reduce((state, name) => addPlayer(state, name, name), createGame("012345", rounds));
 }
 
-function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure">, die?: number) {
+function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure" | "autoRoll">, die?: number) {
   return applyAction(state, "teacher", { type, turn: state.turn }, die === undefined ? undefined : () => die);
 }
 
@@ -246,4 +246,33 @@ test("leaderboard uses competition ranking with shared first and lower-place tie
   const players = classroom(2, ["A", "B", "C", "D", "E"]).players.map((p, i) => ({ ...p, score: [2, 4, 2, 4, 0][i] }));
   assert.deepEqual(ranks(players).map(p => [p.name, p.rank]), [["B", 1], ["D", 1], ["A", 3], ["C", 3], ["E", 5]]);
   assert.equal(players[0].name, "A");
+});
+
+test("auto-roll gives every player ten seconds and stops between rounds", () => {
+  let s = classroom();
+  const toggle = { type: "autoRoll", enabled: true, turn: s.turn } as const;
+  assert.throws(() => applyAction(s, "Hemi", toggle), fails("teacher_only"));
+  s = applyAction(s, "teacher", toggle);
+  assert.equal(s.nextRollAt, null);
+  s = applyAction(s, "teacher", { type: "start", turn: s.turn }, undefined, 1000);
+  assert.equal(s.nextRollAt, 11000);
+  assert.equal(rollIfDue(s, 10999), s);
+  assert.throws(() => teacher(s, "roll", 3), fails("automatic"));
+  assert.throws(() => applyAction(s, "Hemi", { type: "bank", turn: s.turn }, undefined, 11000), fails("time_up"));
+  s = rollIfDue(s, 11000, () => 4);
+  assert.equal(s.pot, 4);
+  assert.equal(s.nextRollAt, 21000);
+  s = applyAction(s, "Hemi", { type: "bank", turn: s.turn }, undefined, 13000);
+  assert.equal(s.nextRollAt, 21000);
+  s = applyAction(s, "teacher", { type: "pause", turn: s.turn });
+  assert.equal(rollIfDue(s, 22000), s);
+  s = applyAction(s, "teacher", { type: "resume", turn: s.turn }, undefined, 23000);
+  assert.equal(s.nextRollAt, 33000);
+  s = applyAction(s, "Aroha", { type: "bank", turn: s.turn }, undefined, 24000);
+  assert.equal(s.nextRollAt, null);
+  s = applyAction(s, "teacher", { type: "next", turn: s.turn }, undefined, 40000);
+  assert.equal(s.nextRollAt, 50000);
+  s = applyAction(s, "teacher", { type: "autoRoll", enabled: false, turn: s.turn });
+  assert.equal(s.nextRollAt, null);
+  assert.equal(rollIfDue(s, 50000), s);
 });

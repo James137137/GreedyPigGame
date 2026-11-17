@@ -136,6 +136,17 @@ function Confirm({ choice, onCancel, onConfirm, disabled }: {
   </dialog>
 }
 
+function Countdown({ deadline }: { deadline: number }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 125);
+    return () => window.clearInterval(timer);
+  }, [deadline]);
+  const seconds = Math.min(10, Math.max(0, Math.ceil((deadline - now) / 1000)));
+  return <div className="room-countdown" role="timer">{seconds ? <>Next roll in <strong>{seconds}</strong> s</> : 'Rolling…'}</div>;
+}
+
 function PlayBoard({ state }: { state: GameState }) {
   const face = state.rolls.at(-1)
   return <section className="room-box room-board" aria-label="Dice table">
@@ -149,6 +160,7 @@ function PlayBoard({ state }: { state: GameState }) {
       <strong>{state.pot}</strong>
       <span>{state.pot === 1 ? 'point' : 'points'}</span>
     </div>
+    {state.nextRollAt != null && <Countdown deadline={state.nextRollAt} />}
     <div className="room-history"><span className="room-kicker">Roll history</span>{state.rolls.length ? <ol aria-label="Roll history, newest last">{state.rolls.map((roll, index) => <li key={index} className={roll === state.deathNumber ? 'room-roll-bust' : ''}>{roll}</li>)}</ol> : <span className="room-copy">No rolls yet</span>}</div>
   </section>
 }
@@ -242,7 +254,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
       try { await root.current?.requestFullscreen?.() } catch { /* The in-page projector layout also fills the viewport. */ }
     }
   }
-  function act(type: Exclude<Action['type'], 'remove' | 'configure'>) { onAction({ type, turn: state.turn }) }
+  function act(type: Exclude<Action['type'], 'remove' | 'configure' | 'autoRoll'>) { onAction({ type, turn: state.turn }) }
   function confirm() {
     if (!choice || disabled) return
     if (choice.kind === 'finish') act('finish')
@@ -267,6 +279,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
       <div className="room-grid">
         <div className="room-main">
           {lobby && (teacher ? <Invite code={state.code} /> : <section className="room-box room-welcome"><span className="room-welcome-icon"><Icon name="check" size={32} /></span><span className="room-kicker">Joined the game</span><h2>You’re in, {player?.name ?? 'player'}!</h2><p>Stay on this screen. Your teacher will start the first roll.</p></section>)}
+          {teacher && !finished && <label className="room-auto"><input type="checkbox" checked={state.autoRoll} disabled={disabled} onChange={e => onAction({ type: 'autoRoll', enabled: e.target.checked, turn: state.turn })} /> Auto-roll every 10 seconds</label>}
           {lobby && <LobbySettings key={state.code + '-' + state.rounds + '-' + state.deathNumber} state={state} teacher={teacher} disabled={disabled} onAction={onAction} />}
           {finished && <Results state={state} player={player} />}
           {finished && state.rolls.length > 0 && <p className="room-final-note">{state.endReason === 'bust' ? 'The final roll was a ' + state.deathNumber + '. ' : ''}{player?.status === 'bust' ? 'Your unbanked points were lost.' : player?.status === 'banked' ? 'You banked ' + points(player.banked) + ' in the final round.' : ''}</p>}
@@ -274,12 +287,12 @@ export function Room({ state, online, identity, connected, busy, error, onAction
             <PlayBoard state={state} />
             {teacher ? <section className="room-box room-controls">
               <div><span className="room-kicker">{between ? 'Round result' : 'Teacher controls'}</span>
-                <h2>{between ? state.endReason === 'bust' ? 'A ' + state.deathNumber + ' ended the round' : 'Round complete' : state.paused ? 'Game paused' : 'Roll the die'}</h2>
+                <h2>{between ? state.endReason === 'bust' ? 'A ' + state.deathNumber + ' ended the round' : 'Round complete' : state.paused ? 'Game paused' : state.autoRoll ? 'Auto-roll on' : 'Roll the die'}</h2>
                 <p>{between ? 'Banked points carry into the next round.' : state.paused ? 'Resume to roll or bank.' : remaining + (remaining === 1 ? ' player is' : ' players are') + ' still in play.'}</p>
               </div>
               <div className="room-actions">
                 {between ? <button type="button" className="room-button room-primary" disabled={disabled || !state.players.length} onClick={() => act('next')}><Icon name="play" />Start next round</button> : <>
-                  <button type="button" className="room-button room-primary" disabled={disabled || state.paused} onClick={() => act('roll')}><Icon name="die" />Roll die</button>
+                  <button type="button" className="room-button room-primary" disabled={disabled || state.paused || state.autoRoll} onClick={() => act('roll')}><Icon name="die" />Roll die</button>
                   <button type="button" className="room-button room-minor" disabled={disabled} onClick={() => act(state.paused ? 'resume' : 'pause')}><Icon name={state.paused ? 'play' : 'pause'} />{state.paused ? 'Resume' : 'Pause'}</button>
                 </>}
               </div>

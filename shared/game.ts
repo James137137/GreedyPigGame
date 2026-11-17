@@ -18,6 +18,8 @@ export interface GameState {
   round: number;
   phase: "lobby" | "playing" | "between" | "finished";
   paused: boolean;
+  autoRoll: boolean;
+  nextRollAt: number | null;
   pot: number;
   rolls: number[];
   totalRolls: number;
@@ -28,6 +30,7 @@ export interface GameState {
 
 export type Action =
   | { type: "start" | "next" | "roll" | "pause" | "resume" | "finish" | "bank"; turn: number }
+  | { type: "autoRoll"; enabled: boolean; turn: number }
   | { type: "configure"; rounds: number; deathNumber: number; turn: number }
   | { type: "remove"; playerId: string; turn: number };
 
@@ -51,7 +54,7 @@ export function createGame(code: string, rounds = 5): GameState {
   validateRounds(rounds);
   return {
     code, rounds, deathNumber: 1, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
-    totalRolls: 0, turn: 0, players: [], endReason: null,
+    autoRoll: false, nextRollAt: null, totalRolls: 0, turn: 0, players: [], endReason: null,
   };
 }
 
@@ -120,7 +123,27 @@ function finishIfAllBanked(state: GameState): GameState {
 
 // A turn identifies a specific opportunity to act. Banking and roster changes
 // leave it open for other students. Rolls, pauses and phase changes close it.
-export function applyAction(state: GameState, actor: string, action: Action, rollDie = randomDie): GameState {
+const ROLL_INTERVAL_MS = 10_000;
+
+function updateCountdown(previous: GameState, next: GameState, now: number): GameState {
+  if (!next.autoRoll || next.paused || next.phase !== "playing") return { ...next, nextRollAt: null };
+  const restart = previous.nextRollAt === null || next.totalRolls !== previous.totalRolls;
+  return { ...next, nextRollAt: restart ? now + ROLL_INTERVAL_MS : previous.nextRollAt };
+}
+
+export function rollIfDue(state: GameState, now: number, rollDie = randomDie): GameState {
+  if (!state.autoRoll || state.paused || state.phase !== "playing" || state.nextRollAt === null || now < state.nextRollAt) return state;
+  const next = transition(state, "teacher", { type: "roll", turn: state.turn }, rollDie);
+  return updateCountdown(state, next, now);
+}
+
+export function applyAction(state: GameState, actor: string, action: Action, rollDie = randomDie, now = Date.now()): GameState {
+  if (action?.type === "roll" && actor === "teacher" && state.autoRoll) throw new GameError("automatic", "Turn off auto-roll to roll manually.");
+  if (action?.type === "bank" && state.nextRollAt !== null && now >= state.nextRollAt) throw new GameError("time_up", "Time is up for that roll.");
+  return updateCountdown(state, transition(state, actor, action, rollDie), now);
+}
+
+function transition(state: GameState, actor: string, action: Action, rollDie: () => number): GameState {
   if (!action || typeof action !== "object" || !Number.isSafeInteger(action.turn)) {
     throw new GameError("invalid_action", "Invalid game action.", 400);
   }
@@ -130,6 +153,9 @@ export function applyAction(state: GameState, actor: string, action: Action, rol
   if (action.turn !== state.turn) throw new GameError("stale_turn", "The game has moved on. Check the latest board.");
 
   switch (action.type) {
+    case "autoRoll":
+      if (state.phase === "finished" || typeof action.enabled !== "boolean") throw new GameError("invalid_auto_roll", "Auto-roll cannot be changed right now.");
+      return { ...state, autoRoll: action.enabled, turn: state.turn + 1 };
     case "configure":
       if (state.phase !== "lobby") throw new GameError("wrong_phase", "Settings are locked once the game starts.");
       validateRounds(action.rounds);
