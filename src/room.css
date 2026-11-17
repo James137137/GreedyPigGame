@@ -247,3 +247,12 @@
 .quiet-panel h2 { margin: 0; }
 .quiet-panel label { display: grid; gap: 4px; margin-top: 12px; }
 .quiet-panel meter, .quiet-panel progress { width: 100%; height: 1rem; accent-color: var(--lime); }
+.noise-gauge { display: grid; grid-template-columns: 44px auto 1fr; gap: 12px; align-items: center; margin: 18px 0; padding: 16px 18px 30px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.noise-glass { position: relative; justify-self: center; width: 22px; height: 128px; border: 2px solid #b8accd; border-radius: 14px 14px 0 0; background: #2c2638; }
+.noise-liquid { position: absolute; inset: auto 2px 0; border-radius: 9px 9px 0 0; background: linear-gradient(to top,#75d9dc,#c5f76a 50%,#ffad6a 78%,#ff789c); background-size: 100% 124px; background-position: bottom; transition: height .16s linear; }
+.noise-glass::after { content: ''; position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 34% 30%,#d1ffff 0 9%,#75d9dc 14%,#429ba9 90%); border: 2px solid #b8accd; }
+.noise-scale { align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; color: var(--muted); }
+.noise-scale span::before { content: '– '; }
+.noise-reading { justify-self: end; text-align: right; }
+.noise-reading strong { display: block; font: 700 clamp(24px,4vw,48px)/1.2 var(--display); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .noise-liquid { transition: none; } }

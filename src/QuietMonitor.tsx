@@ -97,7 +97,11 @@ export function QuietMonitor(props: Props) {
     <p className="room-copy">Sustained noise fills the meter. A full meter removes one future round. Stay quiet for 20 seconds to earn back all missing rounds. Audio stays on this device.</p>
     <div className="room-actions"><button className="room-button room-minor" type="button" onClick={() => { setError(''); setEnabled(!enabled); }}>{enabled ? 'Stop microphone' : 'Start microphone'}</button><span>{enabled && !listening ? 'Waiting for microphone…' : status}</span></div>
     {error && <p className="room-error" role="alert">{error}</p>}
-    <label>Room volume <meter min={0} max={100} value={level} /></label>
+    <div className="noise-gauge" role="meter" aria-label="Room volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level} aria-valuetext={listening ? level + ' percent' : 'Microphone off'}>
+      <div className="noise-glass" aria-hidden="true"><div className="noise-liquid" style={{height: level + '%'}} /></div>
+      <div className="noise-scale" aria-hidden="true"><span>Loud</span><span>Halfway</span><span>Quiet</span></div>
+      <div className="noise-reading"><small>Room volume</small><strong>{listening ? level + '%' : 'Off'}</strong></div>
+    </div>
     <label>Round-loss meter · {progress}% <progress value={progress} max={100} /></label>
     {state.noiseLosses > state.restoredRounds && <label>Earn back {state.noiseLosses - state.restoredRounds} · {quietSeconds} / 20 quiet seconds <progress value={quietSeconds} max={20} /></label>}
   </section>;
