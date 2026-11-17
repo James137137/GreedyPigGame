@@ -1,11 +1,11 @@
 import { NOISE_WINDOW_MS } from './game';
 
 // Relative digital microphone level, independent of sound-pressure calibration.
-export function microphoneLevel(samples: Float32Array): number {
+export function microphoneLevel(samples: Float32Array, loudDb = -12): number {
   let energy = 0;
   for (const sample of samples) energy += sample * sample;
   const db = 10 * Math.log10(Math.max(1e-10, energy / samples.length));
-  return Math.min(1, Math.max(0, (db + 60) / 48));
+  return Math.min(1, Math.max(0, (db + 60) / (loudDb + 60)));
 }
 
 export function quietStreakMs(previous: number, level: number, elapsedMs: number, limit = 0.5): number {

@@ -18,6 +18,15 @@ export function QuietMonitor(props: Props) {
     } catch { /* Storage is optional. */ }
     return 50;
   });
+  const [loudDb, setLoudDb] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quiet-loud-db');
+      if (saved !== null && Number(saved) >= -36 && Number(saved) <= 0) return Number(saved);
+    } catch { /* Storage is optional. */ }
+    return -12;
+  });
+  const fullScale = useRef(loudDb);
+  fullScale.current = loudDb;
   const threshold = useRef(limit);
   threshold.current = limit;
   const [grace, setGrace] = useState(0);
@@ -74,7 +83,7 @@ export function QuietMonitor(props: Props) {
           if (losses !== game.noiseLosses) { losses = game.noiseLosses; fill = 0; quietMs = 0; }
           const receiving = !document.hidden && context?.state === 'running' && !track.muted && connected;
           if (receiving) analyser.getFloatTimeDomainData(data);
-          const volume = receiving ? microphoneLevel(data) : 0;
+          const volume = receiving ? microphoneLevel(data, fullScale.current) : 0;
           setLevel(Math.round(volume * 100));
           const remaining = Math.max(0, game.graceUntil - Date.now());
           setGrace(Math.ceil(remaining / 1000));
@@ -114,6 +123,12 @@ export function QuietMonitor(props: Props) {
       <div className="noise-scale" aria-hidden="true"><span>Loud</span><span className="noise-limit-mark" style={{bottom: limit + '%'}}>Limit {limit}%</span><span>Quiet</span></div>
       <div className="noise-reading"><small>Room volume</small><strong>{listening ? level + '%' : 'Off'}</strong></div>
     </div>
+    <label>Top of thermometer (Loud) · {loudDb} dBFS<input type="range" min="-36" max="0" step="1" value={loudDb} onChange={e => {
+      const value = Number(e.target.value);
+      setLoudDb(value);
+      try { localStorage.setItem('quiet-loud-db', String(value)); } catch { /* Keep the session preference. */ }
+    }} /></label>
+    <p className="room-copy">Move right if the thermometer reaches the top too easily. Move left if it barely rises.</p>
     <label>Acceptable noise limit Â· {limit}%<input type="range" min="10" max="90" step="1" value={limit} onChange={e => {
       const value = Number(e.target.value);
       setLimit(value);
