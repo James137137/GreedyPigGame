@@ -9,6 +9,7 @@ import '@fontsource/space-mono/latin-400.css';
 import '@fontsource/space-mono/latin-700.css';
 import './theme.css';
 import './shell.css';
+import { EditStamp } from './EditStamp';
 import { App } from './App';
 
-createRoot(document.getElementById('root')!).render(<App />);
+createRoot(document.getElementById('root')!).render(<><App /><EditStamp /></>);

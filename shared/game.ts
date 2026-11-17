@@ -2,6 +2,8 @@ import { nicknameIsBlocked } from "./nickname-filter";
 
 export const MAX_PLAYERS = 100;
 export const MAX_ROUNDS = 20;
+export const QUIET_MAX_ROUNDS = 100;
+export const NOISE_WINDOW_MS = 20_000;
 
 export interface Player {
   id: string;
@@ -15,6 +17,9 @@ export interface GameState {
   code: string;
   rounds: number;
   deathNumber: number;
+  quietMode: boolean;
+  noiseLosses: number;
+  lastNoiseLossAt: number | null;
   round: number;
   phase: "lobby" | "playing" | "between" | "finished";
   paused: boolean;
@@ -31,6 +36,8 @@ export interface GameState {
 export type Action =
   | { type: "start" | "next" | "roll" | "pause" | "resume" | "finish" | "bank"; turn: number }
   | { type: "autoRoll"; enabled: boolean; turn: number }
+  | { type: "quietMode"; enabled: boolean; turn: number }
+  | { type: "noisePenalty"; expectedLosses: number; turn: number }
   | { type: "configure"; rounds: number; deathNumber: number; turn: number }
   | { type: "remove"; playerId: string; turn: number };
 
@@ -41,9 +48,9 @@ export class GameError extends Error {
   }
 }
 
-function validateRounds(rounds: number) {
-  if (!Number.isInteger(rounds) || rounds < 1 || rounds > MAX_ROUNDS) {
-    throw new GameError("invalid_rounds", `Choose 1 to ${MAX_ROUNDS} rounds.`, 400);
+function validateRounds(rounds: number, limit = MAX_ROUNDS) {
+  if (!Number.isInteger(rounds) || rounds < 1 || rounds > limit) {
+    throw new GameError("invalid_rounds", `Choose 1 to ${limit} rounds.`, 400);
   }
 }
 
@@ -53,7 +60,7 @@ export function createGame(code: string, rounds = 5): GameState {
   }
   validateRounds(rounds);
   return {
-    code, rounds, deathNumber: 1, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
+    code, rounds, deathNumber: 1, quietMode: false, noiseLosses: 0, lastNoiseLossAt: null, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
     autoRoll: false, nextRollAt: null, totalRolls: 0, turn: 0, players: [], endReason: null,
   };
 }
@@ -134,17 +141,17 @@ function updateCountdown(previous: GameState, next: GameState, now: number): Gam
 export function rollIfDue(state: GameState, now: number, rollDie = randomDie): GameState {
   if (!state.autoRoll || state.paused || (state.phase !== "playing" && state.phase !== "between") || state.nextRollAt === null || now < state.nextRollAt) return state;
   const type = state.phase === "between" ? "next" : "roll";
-  const next = transition(state, "teacher", { type, turn: state.turn }, rollDie);
+  const next = transition(state, "teacher", { type, turn: state.turn }, rollDie, now);
   return updateCountdown(state, next, now);
 }
 
 export function applyAction(state: GameState, actor: string, action: Action, rollDie = randomDie, now = Date.now()): GameState {
   if (action?.type === "roll" && actor === "teacher" && state.autoRoll) throw new GameError("automatic", "Turn off auto-roll to roll manually.");
   if (action?.type === "bank" && state.nextRollAt !== null && now >= state.nextRollAt) throw new GameError("time_up", "Time is up for that roll.");
-  return updateCountdown(state, transition(state, actor, action, rollDie), now);
+  return updateCountdown(state, transition(state, actor, action, rollDie, now), now);
 }
 
-function transition(state: GameState, actor: string, action: Action, rollDie: () => number): GameState {
+function transition(state: GameState, actor: string, action: Action, rollDie: () => number, now: number): GameState {
   if (!action || typeof action !== "object" || !Number.isSafeInteger(action.turn)) {
     throw new GameError("invalid_action", "Invalid game action.", 400);
   }
@@ -157,9 +164,20 @@ function transition(state: GameState, actor: string, action: Action, rollDie: ()
     case "autoRoll":
       if (state.phase === "finished" || typeof action.enabled !== "boolean") throw new GameError("invalid_auto_roll", "Auto-roll cannot be changed right now.");
       return { ...state, autoRoll: action.enabled, turn: state.turn + 1 };
+    case "quietMode":
+      if (state.phase !== "lobby" || typeof action.enabled !== "boolean") throw new GameError("wrong_phase", "Choose Quiet Mode before starting.");
+      if (state.quietMode === action.enabled) return state;
+      return { ...state, quietMode: action.enabled, rounds: action.enabled ? 20 : 5, turn: state.turn + 1 };
+    case "noisePenalty":
+      if (!state.quietMode || state.phase !== "playing" || state.paused || state.rounds <= state.round
+        || action.expectedLosses !== state.noiseLosses
+        || (state.lastNoiseLossAt !== null && now - state.lastNoiseLossAt < NOISE_WINDOW_MS)) {
+        throw new GameError("noise_closed", "A round cannot be removed right now.");
+      }
+      return { ...state, rounds: state.rounds - 1, noiseLosses: state.noiseLosses + 1, lastNoiseLossAt: now };
     case "configure":
       if (state.phase !== "lobby") throw new GameError("wrong_phase", "Settings are locked once the game starts.");
-      validateRounds(action.rounds);
+      validateRounds(action.rounds, state.quietMode ? QUIET_MAX_ROUNDS : MAX_ROUNDS);
       if (!Number.isInteger(action.deathNumber) || action.deathNumber < 1 || action.deathNumber > 6) {
         throw new GameError("invalid_death_number", "Choose a death number from 1 to 6.", 400);
       }

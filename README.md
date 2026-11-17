@@ -62,3 +62,9 @@ The network tests create their own rooms. The simulation's terminal output repor
 | Two tabs show the same player or both show teacher controls | Keep the teacher in the original browser profile and use a separate profile for each player. |
 | A student loses Wi-Fi or a bank seems missing | Wait for reconnection and read the restored score and status before acting again. [Classroom recovery steps](TEACHER_GUIDE.md) |
 | A public room fails to create or school devices cannot connect | Check the deployed Worker, binding, quotas and school WebSocket access. [Deployment troubleshooting](DEPLOYMENT.md) |
+
+## Quiet Mode and version timestamp
+
+Quiet Mode uses the teacher device's microphone and defaults to 20 rounds, adjustable up to 100. See the [teacher guide](TEACHER_GUIDE.md) for the noise meter and round-loss rules.
+
+The vertical timestamp on the lower-right edge shows the latest Git commit time in Pacific/Auckland. A build from a source archive without Git history shows its build time instead.

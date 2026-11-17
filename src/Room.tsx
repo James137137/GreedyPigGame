@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { EditStamp } from './EditStamp'
+import { QuietMonitor } from './QuietMonitor'
 import { QRCodeSVG } from 'qrcode.react'
-import { AUTO_INTERVAL_SECONDS, ranks, type Action, type GameState, type Player } from '../shared/game'
+import { AUTO_INTERVAL_SECONDS, MAX_ROUNDS, QUIET_MAX_ROUNDS, ranks, type Action, type GameState, type Player } from '../shared/game'
 import './room.css'
 
 interface RoomProps {
@@ -176,7 +178,7 @@ function LobbySettings({ state, teacher, disabled, onAction }: {
     <h2>Game settings</h2>
     {teacher ? <>
       <div className="room-settings-fields">
-        <div><label htmlFor="room-rounds">Rounds</label><select id="room-rounds" value={rounds} disabled={disabled} onChange={e => setRounds(Number(e.target.value))}>{Array.from({ length: 20 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}</select></div>
+        <div><label htmlFor="room-rounds">Rounds</label><select id="room-rounds" value={rounds} disabled={disabled} onChange={e => setRounds(Number(e.target.value))}>{Array.from({ length: state.quietMode ? QUIET_MAX_ROUNDS : MAX_ROUNDS }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}</select></div>
         <div><label htmlFor="room-death">Death number</label><select id="room-death" value={deathNumber} disabled={disabled} onChange={e => setDeathNumber(Number(e.target.value))}>{[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}</select></div>
       </div>
       <p className="room-copy" role="status">{dirty ? 'Save your changes before starting the game.' : rule}</p>
@@ -254,7 +256,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
       try { await root.current?.requestFullscreen?.() } catch { /* The in-page projector layout also fills the viewport. */ }
     }
   }
-  function act(type: Exclude<Action['type'], 'remove' | 'configure' | 'autoRoll'>) { onAction({ type, turn: state.turn }) }
+  function act(type: Exclude<Action['type'], 'remove' | 'configure' | 'autoRoll' | 'quietMode' | 'noisePenalty'>) { onAction({ type, turn: state.turn }) }
   function confirm() {
     if (!choice || disabled) return
     if (choice.kind === 'finish') act('finish')
@@ -264,6 +266,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
   const personalMessage = player?.status === 'banked' ? 'You banked ' + points(player.banked) + ' this round.' : player?.status === 'bust' ? 'Bust! Your banked score is safe.' : player?.status === 'waiting' ? 'You’ll join the next round.' : between ? 'Waiting for the next round.' : state.paused ? 'The teacher has paused play.' : 'Bank before a ' + state.deathNumber + ' wipes the pot.'
 
   return <main className={'game-room' + (projector ? ' room-projector' : '')} ref={root}>
+    {projector && <EditStamp />}
     <div className="room-content">
       <div className="room-topline">
         <div className="room-kicker"><span className={'room-led' + (!connected ? ' room-led-off' : '')} />{teacher ? 'Teacher console' : 'Player console'}<span className="room-slash">/</span><span>Room {state.code}</span></div>
@@ -274,11 +277,14 @@ export function Room({ state, online, identity, connected, busy, error, onAction
         <span className={'room-phase' + (state.paused ? ' room-phase-paused' : '')}>{phaseLabel}</span>
         {!lobby && <span className="room-death-number">Death number <b>{state.deathNumber}</b></span>}
       </header>
+      {state.quietMode && <p role="status" className="room-copy">Quiet Mode · {state.noiseLosses} {state.noiseLosses === 1 ? 'round' : 'rounds'} removed by noise · {state.rounds} total rounds</p>}
       {!connected && <p className="room-notice" role="status"><Icon name="signal" /> Reconnecting… Controls will return when the connection is restored.</p>}
       {error && <p className="room-notice room-error" role="alert">{error}</p>}
       <div className="room-grid">
         <div className="room-main">
           {lobby && (teacher ? <Invite code={state.code} /> : <section className="room-box room-welcome"><span className="room-welcome-icon"><Icon name="check" size={32} /></span><span className="room-kicker">Joined the game</span><h2>You’re in, {player?.name ?? 'player'}!</h2><p>Stay on this screen. Your teacher will start the first roll.</p></section>)}
+          {teacher && lobby && <label className="room-auto"><input type="checkbox" checked={state.quietMode} disabled={disabled} onChange={e => onAction({ type: 'quietMode', enabled: e.target.checked, turn: state.turn })} /> Quiet Mode</label>}
+          {teacher && state.quietMode && !finished && <QuietMonitor key={state.code} state={state} connected={connected} busy={busy} onAction={onAction} />}
           {teacher && !finished && <label className="room-auto"><input type="checkbox" checked={state.autoRoll} disabled={disabled} onChange={e => onAction({ type: 'autoRoll', enabled: e.target.checked, turn: state.turn })} /> Auto-roll every {AUTO_INTERVAL_SECONDS} seconds and start new rounds</label>}
           {lobby && <LobbySettings key={state.code + '-' + state.rounds + '-' + state.deathNumber} state={state} teacher={teacher} disabled={disabled} onAction={onAction} />}
           {finished && <Results state={state} player={player} />}

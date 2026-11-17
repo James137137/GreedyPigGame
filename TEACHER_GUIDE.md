@@ -41,3 +41,9 @@ For another class, select **New game**, create a fresh room and show its new cod
 | The page loads but the board stays disconnected | Compare the public website on another network. Ask school IT to allow secure WebSocket connections to the deployed hostname on port 443. |
 
 The code is for sharing with the class. The teacher's authority comes from their browser's private session. The lobby and leaderboard display nicknames to participants, so give students a chance to choose a classroom-appropriate name before joining.
+
+## Quiet Mode
+
+In the teacher lobby, tick **Quiet Mode** to start with 20 rounds. You can set the total from 1 to 100, then save your settings. Click **Start microphone** on the teacher laptop and grant browser permission. Use the lobby's **Room volume** meter to check the input before starting. Students never need microphone access.
+
+Keep the teacher tab visible. During active play, louder sound fills the round-loss meter faster. At maximum level it takes about 20 continuous seconds to fill; quiet drains it. The threshold depends on the laptop microphone. At 100%, everyone sees the total drop by one. The current round and banked scores are protected. Pausing or going between rounds holds the meter. Stop the microphone to clear it, and restart it after refreshing the teacher tab. Only a threshold event goes to the server. Audio stays in the browser.

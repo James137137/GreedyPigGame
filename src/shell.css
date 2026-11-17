@@ -10,3 +10,5 @@
 .connecting-room, .retry-room { padding-block: 2rem; }
 @media(max-width:460px) { .header-action[aria-pressed] span { display: none; } }
 .brand-home { display: inline-flex; padding: 0; background: none; border: 0; color: inherit; }
+.edit-stamp { position: fixed; z-index: 2; right: max(1px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); writing-mode: vertical-rl; transform: rotate(180deg); font: 10px/1 var(--mono); color: var(--muted); pointer-events: none; }
+body:has(.room-projector) #root > .edit-stamp { display: none; }

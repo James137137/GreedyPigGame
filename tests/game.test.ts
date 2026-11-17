@@ -1,3 +1,4 @@
+import { microphoneLevel, noiseProgress } from '../shared/noise';
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addPlayer, applyAction, createGame, GameError, normalizeNickname, ranks, rollIfDue, type Action, type GameState } from "../shared/game";
@@ -6,7 +7,7 @@ function classroom(rounds = 2, names = ["Aroha", "Hemi"]): GameState {
   return names.reduce((state, name) => addPlayer(state, name, name), createGame("012345", rounds));
 }
 
-function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure" | "autoRoll">, die?: number) {
+function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure" | "autoRoll" | "noisePenalty" | "quietMode">, die?: number) {
   return applyAction(state, "teacher", { type, turn: state.turn }, die === undefined ? undefined : () => die);
 }
 
@@ -279,4 +280,41 @@ test("auto-roll gives every player five seconds and advances between rounds", ()
   s = applyAction(s, "teacher", { type: "autoRoll", enabled: false, turn: s.turn });
   assert.equal(s.nextRollAt, null);
   assert.equal(rollIfDue(s, 50000), s);
+});
+
+test("quiet mode has separate round limits and removes only future rounds once per threshold", () => {
+  const lobby = classroom();
+  const toggle = { type: "quietMode", enabled: true, turn: lobby.turn } as const;
+  assert.throws(() => applyAction(lobby, "Aroha", toggle), fails("teacher_only"));
+  let s = applyAction(lobby, "teacher", toggle);
+  assert.equal(s.rounds, 20);
+  s = applyAction(s, "teacher", { type: "configure", rounds: 100, deathNumber: 1, turn: s.turn });
+  assert.equal(s.rounds, 100);
+  s = applyAction(s, "teacher", { type: "configure", rounds: 3, deathNumber: 1, turn: s.turn });
+  s = teacher(s, "start");
+  s = teacher(s, "roll", 4);
+  s = bank(s, "Hemi");
+  const penalty = { type: "noisePenalty", expectedLosses: 0, turn: s.turn } as const;
+  assert.throws(() => applyAction(s, "Aroha", penalty), fails("teacher_only"));
+  let after = applyAction(s, "teacher", penalty, undefined, 20000);
+  assert.equal(after.rounds, 2);
+  assert.equal(after.turn, s.turn);
+  assert.deepEqual(after.players, s.players);
+  assert.equal(after.pot, 4);
+  assert.throws(() => applyAction(after, "teacher", penalty, undefined, 40000), fails("noise_closed"));
+  const second = { ...penalty, expectedLosses: 1 };
+  assert.throws(() => applyAction(after, "teacher", second, undefined, 21000), fails("noise_closed"));
+  after = applyAction(after, "teacher", second, undefined, 40000);
+  assert.equal(after.rounds, 1);
+  assert.throws(() => applyAction(after, "teacher", { ...penalty, expectedLosses: 2 }, undefined, 60000), fails("noise_closed"));
+  assert.equal(bank(after, "Aroha").phase, "finished");
+});
+
+test("sustained loudness fills in twenty seconds, moderate noise takes longer and quiet drains", () => {
+  assert.equal(microphoneLevel(new Float32Array(32)), 0);
+  const loud = microphoneLevel(new Float32Array(32).fill(0.5));
+  const moderate = microphoneLevel(new Float32Array(32).fill(0.07));
+  assert.equal(noiseProgress(0, loud, 20000), 1);
+  assert.ok(noiseProgress(0, moderate, 20000) > 0 && noiseProgress(0, moderate, 20000) < 1);
+  assert.equal(noiseProgress(0.5, 0, 2000), 0.4);
 });
