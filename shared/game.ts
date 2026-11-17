@@ -86,7 +86,7 @@ export function addPlayer(state: GameState, id: string, input: string): GameStat
     throw new GameError("name_taken", "That nickname is taken. Choose another one.");
   }
   const player: Player = { id, name, score: 0, status: "waiting", banked: 0 };
-  return { ...state, players: [...state.players, player] };
+  return updateCountdown(state, { ...state, players: [...state.players, player] }, Date.now());
 }
 
 // Reject the incomplete final group of byte values so each face is equally likely.
@@ -123,17 +123,18 @@ function finishIfAllBanked(state: GameState): GameState {
 
 // A turn identifies a specific opportunity to act. Banking and roster changes
 // leave it open for other students. Rolls, pauses and phase changes close it.
-const ROLL_INTERVAL_MS = 10_000;
+export const AUTO_INTERVAL_SECONDS = 5;
 
 function updateCountdown(previous: GameState, next: GameState, now: number): GameState {
-  if (!next.autoRoll || next.paused || next.phase !== "playing") return { ...next, nextRollAt: null };
-  const restart = previous.nextRollAt === null || next.totalRolls !== previous.totalRolls;
-  return { ...next, nextRollAt: restart ? now + ROLL_INTERVAL_MS : previous.nextRollAt };
+  if (!next.autoRoll || next.paused || !next.players.length || (next.phase !== "playing" && next.phase !== "between")) return { ...next, nextRollAt: null };
+  const restart = previous.nextRollAt === null || next.phase !== previous.phase || next.totalRolls !== previous.totalRolls;
+  return { ...next, nextRollAt: restart ? now + AUTO_INTERVAL_SECONDS * 1000 : previous.nextRollAt };
 }
 
 export function rollIfDue(state: GameState, now: number, rollDie = randomDie): GameState {
-  if (!state.autoRoll || state.paused || state.phase !== "playing" || state.nextRollAt === null || now < state.nextRollAt) return state;
-  const next = transition(state, "teacher", { type: "roll", turn: state.turn }, rollDie);
+  if (!state.autoRoll || state.paused || (state.phase !== "playing" && state.phase !== "between") || state.nextRollAt === null || now < state.nextRollAt) return state;
+  const type = state.phase === "between" ? "next" : "roll";
+  const next = transition(state, "teacher", { type, turn: state.turn }, rollDie);
   return updateCountdown(state, next, now);
 }
 

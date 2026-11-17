@@ -134,12 +134,14 @@ export class GameRoom extends DurableObject<unknown> {
     if (typeof form.name !== 'string') return problem(400, 'Enter a nickname.');
     const secret = await mintCredential();
     const actor = crypto.randomUUID();
-    const next = addPlayer(this.liveGame(), actor, form.name);
+    const previous = this.liveGame();
+    const next = addPlayer(previous, actor, form.name);
     this.ctx.storage.transactionSync(() => {
       this.ctx.storage.sql.exec('INSERT INTO sessions (digest, actor) VALUES (?, ?)', secret.digest, actor);
       this.writeGame(next);
     });
     this.game = next;
+    if (previous.nextRollAt !== next.nextRollAt) this.ctx.waitUntil(this.scheduleAlarm());
     this.scheduleBroadcast();
     return this.issued(request, code, actor, secret.token);
   }

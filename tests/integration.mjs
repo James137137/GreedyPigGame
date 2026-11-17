@@ -190,14 +190,14 @@ test('SQLite and session receipts survive forced Durable Object hibernation', { 
     await harness.close();
   }
 });
-test('auto-roll fires twice on the local Worker while the teacher is disconnected', { timeout: 60000 }, async () => {
+test('auto-roll starts the next round and rolls while the teacher is disconnected', { timeout: 60000 }, async () => {
   const { createTestHarness } = await import('wrangler');
   const harness = createTestHarness({ workers: [{ configPath: './wrangler.jsonc' }] });
   const clients = [];
   try {
     const { url } = await harness.listen();
     const base = localOrigin(url.origin);
-    const host = await createRoom(base, 1);
+    const host = await createRoom(base, 2);
     const teacher = await RoomClient.connect(base, host);
     clients.push(teacher);
     const student = await RoomClient.connect(base, await joinRoom(base, host.code, 'Maia'));
@@ -206,11 +206,13 @@ test('auto-roll fires twice on the local Worker while the teacher is disconnecte
     await teacherStep(teacher, 'start');
     const started = await student.waitFor(s => s.nextRollAt !== null, 'first countdown');
     await teacher.close();
-    for (let count = 1; count <= 2; count++) {
-      await new Promise(resolve => setTimeout(resolve, 8500));
-      const roll = await student.waitFor(s => s.totalRolls === count, 'automatic roll');
-      assert.ok(roll.nextRollAt >= started.nextRollAt + count * 10000);
-    }
+    const roll = await student.waitFor(s => s.totalRolls === 1, 'automatic roll');
+    assert.ok(roll.nextRollAt >= started.nextRollAt + 5000);
+    await student.sendAction({ type: 'bank', turn: student.state.turn });
+    assert.equal(student.state.phase, 'between');
+    const nextRound = await student.waitFor(s => s.round === 2, 'automatic round start');
+    assert.equal(nextRound.pot, 0);
+    await student.waitFor(s => s.totalRolls === 2, 'next round automatic roll');
     await student.sendAction({ type: 'bank', turn: student.state.turn });
     assert.equal(student.state.phase, 'finished');
     assert.equal(student.state.nextRollAt, null);

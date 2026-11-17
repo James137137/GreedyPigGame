@@ -11,12 +11,12 @@ You need the deployed HTTPS game address, a teacher laptop and a browser on each
 
 ## Play a round
 
-For timed play, tick **Auto-roll every 10 seconds** before starting or during play. Everyone sees the countdown. Each round starts with a full ten seconds, and banking stays open until the deadline. Pause stops the clock; resuming gives everyone a fresh ten seconds. You still start each new round.
+For timed play, tick **Auto-roll every 5 seconds and start new rounds** before starting or during play. Everyone sees the countdown. Each round starts with a full five seconds, and banking stays open until the deadline. Pause stops the clock; resuming gives everyone a fresh five seconds. Start the first round yourself. After a bust or when everyone banks, the next round starts automatically after five seconds. Untick auto-roll during that countdown to hold the class between rounds.
 
 1. Select **Roll die**. The first two rolls of the whole game are equally likely to show any number from 2 to 6. From the third roll, all six faces are equally likely. A custom death number from 2 to 6 can still end a round on an opening roll. Every face other than the death number adds its value to the shared pot. For example, if you set the death number to 6, rolling a 1 earns one point. Each active student's screen shows the current offer.
 2. Give the class time to decide. A student who selects **Bank** collects the entire displayed pot once. Their total updates immediately when the room accepts the bank. Everyone else can still choose for themselves.
 3. Roll again when ready. When the die shows the **death number**, everyone still active earns zero for this round. Previous banked points are safe. The round also ends as soon as everyone has banked.
-4. Select **Start next round**. Everyone on the roster starts active again with a fresh pot and keeps their accumulated total.
+4. In manual mode, select **Start next round**. Everyone on the roster starts active again with a fresh pot and keeps their accumulated total.
 
 With the default death number of 1, rolls of 4 and 3 give a pot of 7. Maia banks and adds 7 to her total. Hemi stays in. If the next roll is a 1, Hemi earns 0 this round and Maia keeps her 7.
 

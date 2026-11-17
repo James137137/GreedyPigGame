@@ -248,30 +248,34 @@ test("leaderboard uses competition ranking with shared first and lower-place tie
   assert.equal(players[0].name, "A");
 });
 
-test("auto-roll gives every player ten seconds and stops between rounds", () => {
+test("auto-roll gives every player five seconds and advances between rounds", () => {
   let s = classroom();
   const toggle = { type: "autoRoll", enabled: true, turn: s.turn } as const;
   assert.throws(() => applyAction(s, "Hemi", toggle), fails("teacher_only"));
   s = applyAction(s, "teacher", toggle);
   assert.equal(s.nextRollAt, null);
   s = applyAction(s, "teacher", { type: "start", turn: s.turn }, undefined, 1000);
-  assert.equal(s.nextRollAt, 11000);
-  assert.equal(rollIfDue(s, 10999), s);
+  assert.equal(s.nextRollAt, 6000);
+  assert.equal(rollIfDue(s, 5999), s);
   assert.throws(() => teacher(s, "roll", 3), fails("automatic"));
-  assert.throws(() => applyAction(s, "Hemi", { type: "bank", turn: s.turn }, undefined, 11000), fails("time_up"));
-  s = rollIfDue(s, 11000, () => 4);
+  assert.throws(() => applyAction(s, "Hemi", { type: "bank", turn: s.turn }, undefined, 6000), fails("time_up"));
+  s = rollIfDue(s, 6000, () => 4);
   assert.equal(s.pot, 4);
-  assert.equal(s.nextRollAt, 21000);
-  s = applyAction(s, "Hemi", { type: "bank", turn: s.turn }, undefined, 13000);
-  assert.equal(s.nextRollAt, 21000);
+  assert.equal(s.nextRollAt, 11000);
+  s = applyAction(s, "Hemi", { type: "bank", turn: s.turn }, undefined, 8000);
+  assert.equal(s.nextRollAt, 11000);
   s = applyAction(s, "teacher", { type: "pause", turn: s.turn });
   assert.equal(rollIfDue(s, 22000), s);
   s = applyAction(s, "teacher", { type: "resume", turn: s.turn }, undefined, 23000);
-  assert.equal(s.nextRollAt, 33000);
+  assert.equal(s.nextRollAt, 28000);
   s = applyAction(s, "Aroha", { type: "bank", turn: s.turn }, undefined, 24000);
-  assert.equal(s.nextRollAt, null);
-  s = applyAction(s, "teacher", { type: "next", turn: s.turn }, undefined, 40000);
-  assert.equal(s.nextRollAt, 50000);
+  assert.equal(s.phase, "between");
+  assert.equal(s.nextRollAt, 29000);
+  assert.equal(rollIfDue(s, 28999), s);
+  s = rollIfDue(s, 29000);
+  assert.equal(s.round, 2);
+  assert.equal(s.pot, 0);
+  assert.equal(s.nextRollAt, 34000);
   s = applyAction(s, "teacher", { type: "autoRoll", enabled: false, turn: s.turn });
   assert.equal(s.nextRollAt, null);
   assert.equal(rollIfDue(s, 50000), s);
