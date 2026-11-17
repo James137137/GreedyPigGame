@@ -256,7 +256,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
       try { await root.current?.requestFullscreen?.() } catch { /* The in-page projector layout also fills the viewport. */ }
     }
   }
-  function act(type: Exclude<Action['type'], 'remove' | 'configure' | 'autoRoll' | 'quietMode' | 'noisePenalty'>) { onAction({ type, turn: state.turn }) }
+  function act(type: Exclude<Action['type'], 'remove' | 'configure' | 'autoRoll' | 'quietMode' | 'noisePenalty' | 'quietRestore'>) { onAction({ type, turn: state.turn }) }
   function confirm() {
     if (!choice || disabled) return
     if (choice.kind === 'finish') act('finish')
@@ -277,7 +277,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
         <span className={'room-phase' + (state.paused ? ' room-phase-paused' : '')}>{phaseLabel}</span>
         {!lobby && <span className="room-death-number">Death number <b>{state.deathNumber}</b></span>}
       </header>
-      {state.quietMode && <p role="status" className="room-copy">Quiet Mode · {state.noiseLosses} {state.noiseLosses === 1 ? 'round' : 'rounds'} removed by noise · {state.rounds} total rounds</p>}
+      {state.quietMode && <p role="status" className="room-copy">Quiet Mode · {state.noiseLosses} {state.noiseLosses === 1 ? 'round' : 'rounds'} removed by noise{state.restoredRounds > 0 && <> · {state.restoredRounds} earned back</>} · {state.rounds} total rounds</p>}
       {!connected && <p className="room-notice" role="status"><Icon name="signal" /> Reconnecting… Controls will return when the connection is restored.</p>}
       {error && <p className="room-notice room-error" role="alert">{error}</p>}
       <div className="room-grid">

@@ -1,4 +1,4 @@
-import { microphoneLevel, noiseProgress } from '../shared/noise';
+import { microphoneLevel, noiseProgress, quietStreakMs } from '../shared/noise';
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addPlayer, applyAction, createGame, GameError, normalizeNickname, ranks, rollIfDue, type Action, type GameState } from "../shared/game";
@@ -7,7 +7,7 @@ function classroom(rounds = 2, names = ["Aroha", "Hemi"]): GameState {
   return names.reduce((state, name) => addPlayer(state, name, name), createGame("012345", rounds));
 }
 
-function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure" | "autoRoll" | "noisePenalty" | "quietMode">, die?: number) {
+function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure" | "autoRoll" | "noisePenalty" | "quietRestore" | "quietMode">, die?: number) {
   return applyAction(state, "teacher", { type, turn: state.turn }, die === undefined ? undefined : () => die);
 }
 
@@ -317,4 +317,29 @@ test("sustained loudness fills in twenty seconds, moderate noise takes longer an
   assert.equal(noiseProgress(0, loud, 20000), 1);
   assert.ok(noiseProgress(0, moderate, 20000) > 0 && noiseProgress(0, moderate, 20000) < 1);
   assert.equal(noiseProgress(0.5, 0, 2000), 0.4);
+});
+
+test("twenty quiet seconds restore exactly the original configured total", () => {
+  for (const maximum of [3, 20, 65]) {
+    let s = classroom();
+    s = applyAction(s, "teacher", { type: "quietMode", enabled: true, turn: s.turn });
+    s = applyAction(s, "teacher", { type: "configure", rounds: maximum, deathNumber: 1, turn: s.turn });
+    s = teacher(s, "start");
+    for (const now of [20_000, 40_000]) {
+      s = applyAction(s, "teacher", { type: "noisePenalty", expectedLosses: s.noiseLosses, turn: s.turn }, undefined, now);
+    }
+    const restore = { type: "quietRestore", expectedLosses: 2, turn: s.turn } as const;
+    assert.throws(() => applyAction(s, "teacher", restore, undefined, 59_999), fails("restore_closed"));
+    assert.throws(() => applyAction(s, "Aroha", restore, undefined, 60_000), fails("teacher_only"));
+    const restored = applyAction(s, "teacher", restore, undefined, 60_000);
+    assert.equal(restored.rounds, maximum);
+    assert.equal(restored.turn, s.turn);
+    assert.throws(() => applyAction(restored, "teacher", restore, undefined, 61_000), fails("restore_closed"));
+    const reduced = applyAction(restored, "teacher", { ...restore, type: "noisePenalty" }, undefined, 80_000);
+    assert.equal(reduced.rounds, maximum - 1);
+    assert.equal(applyAction(reduced, "teacher", { ...restore, expectedLosses: 3 }, undefined, 100_000).rounds, maximum);
+  }
+  assert.equal(quietStreakMs(19_800, 0.49, 200), 20_000);
+  assert.equal(quietStreakMs(19_800, 0.5, 200), 0);
+  assert.equal(quietStreakMs(19_800, 0, 2000), 0);
 });

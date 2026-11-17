@@ -31,7 +31,7 @@ function actionFrom(input: unknown): Action {
   }
   const { type, turn } = input;
   // Accept only the parameters belonging to this command.
-  const fields = type === 'noisePenalty' ? ['expectedLosses'] : type === 'quietMode' || type === 'autoRoll' ? ['enabled'] : type === 'configure' ? ['rounds', 'deathNumber'] : type === 'remove' ? ['playerId'] : [];
+  const fields = (type === 'noisePenalty' || type === 'quietRestore') ? ['expectedLosses'] : type === 'quietMode' || type === 'autoRoll' ? ['enabled'] : type === 'configure' ? ['rounds', 'deathNumber'] : type === 'remove' ? ['playerId'] : [];
   if (Object.keys(input).some(key => key !== 'type' && key !== 'turn' && !fields.includes(key))) {
     throw new InvalidRequest(400, 'Unexpected game action parameters.');
   }
@@ -41,6 +41,7 @@ function actionFrom(input: unknown): Action {
     case 'remove':
       if (typeof input.playerId === 'string' && input.playerId.length <= 64) return { type, turn, playerId: input.playerId };
       break;
+    case 'quietRestore':
     case 'noisePenalty':
       if (typeof input.expectedLosses === 'number' && Number.isSafeInteger(input.expectedLosses)) return { type, turn, expectedLosses: input.expectedLosses };
       break;
@@ -78,7 +79,7 @@ export class GameRoom extends DurableObject<unknown> {
         const saved = JSON.parse(row.game) as Omit<GameState, 'endReason'> & { endReason: GameState['endReason'] | 'one' };
         // Older snapshots retain only the current round. Preserve normal odds for games already past round one.
         const totalRolls = saved.totalRolls ?? (saved.round <= 1 ? saved.rolls.length : 2);
-        this.game = { ...saved, quietMode: saved.quietMode ?? false, noiseLosses: saved.noiseLosses ?? 0, lastNoiseLossAt: saved.lastNoiseLossAt ?? null, autoRoll: saved.autoRoll ?? false, nextRollAt: saved.nextRollAt ?? null, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
+        this.game = { ...saved, quietMode: saved.quietMode ?? false, noiseLosses: saved.noiseLosses ?? 0, restoredRounds: saved.restoredRounds ?? 0, lastNoiseLossAt: saved.lastNoiseLossAt ?? null, autoRoll: saved.autoRoll ?? false, nextRollAt: saved.nextRollAt ?? null, totalRolls, deathNumber: saved.deathNumber ?? 1, endReason: saved.endReason === 'one' ? 'bust' : saved.endReason };
         this.expires = row.expires;
       }
     }

@@ -19,6 +19,7 @@ export interface GameState {
   deathNumber: number;
   quietMode: boolean;
   noiseLosses: number;
+  restoredRounds: number;
   lastNoiseLossAt: number | null;
   round: number;
   phase: "lobby" | "playing" | "between" | "finished";
@@ -37,7 +38,7 @@ export type Action =
   | { type: "start" | "next" | "roll" | "pause" | "resume" | "finish" | "bank"; turn: number }
   | { type: "autoRoll"; enabled: boolean; turn: number }
   | { type: "quietMode"; enabled: boolean; turn: number }
-  | { type: "noisePenalty"; expectedLosses: number; turn: number }
+  | { type: "noisePenalty" | "quietRestore"; expectedLosses: number; turn: number }
   | { type: "configure"; rounds: number; deathNumber: number; turn: number }
   | { type: "remove"; playerId: string; turn: number };
 
@@ -60,7 +61,7 @@ export function createGame(code: string, rounds = 5): GameState {
   }
   validateRounds(rounds);
   return {
-    code, rounds, deathNumber: 1, quietMode: false, noiseLosses: 0, lastNoiseLossAt: null, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
+    code, rounds, deathNumber: 1, quietMode: false, noiseLosses: 0, restoredRounds: 0, lastNoiseLossAt: null, round: 0, phase: "lobby", paused: false, pot: 0, rolls: [],
     autoRoll: false, nextRollAt: null, totalRolls: 0, turn: 0, players: [], endReason: null,
   };
 }
@@ -168,6 +169,17 @@ function transition(state: GameState, actor: string, action: Action, rollDie: ()
       if (state.phase !== "lobby" || typeof action.enabled !== "boolean") throw new GameError("wrong_phase", "Choose Quiet Mode before starting.");
       if (state.quietMode === action.enabled) return state;
       return { ...state, quietMode: action.enabled, rounds: action.enabled ? 20 : 5, turn: state.turn + 1 };
+    case "quietRestore": {
+      // Losses and restorations are cumulative. Their difference is exactly
+      // the number of rounds missing from the teacher's starting total.
+      const missing = state.noiseLosses - state.restoredRounds;
+      if (!state.quietMode || state.phase !== "playing" || state.paused || missing <= 0
+        || action.expectedLosses !== state.noiseLosses || state.lastNoiseLossAt === null
+        || now - state.lastNoiseLossAt < NOISE_WINDOW_MS) {
+        throw new GameError("restore_closed", "Rounds cannot be restored right now.");
+      }
+      return { ...state, rounds: state.rounds + missing, restoredRounds: state.noiseLosses };
+    }
     case "noisePenalty":
       if (!state.quietMode || state.phase !== "playing" || state.paused || state.rounds <= state.round
         || action.expectedLosses !== state.noiseLosses
