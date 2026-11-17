@@ -70,8 +70,8 @@
 .room-alert { background: var(--pink); color: white; }
 .room-project-toggle { min-height: 38px; padding: 7px 12px; font-size: 14px; }
 .game-room :is(button, input, select, summary):focus-visible, .room-confirm button:focus-visible { outline: 3px solid var(--purple); outline-offset: 3px; }
-.room-copy, .room-controls p, .room-welcome p, .room-final-note, .room-confirm p { color: var(--room-quiet); line-height: 1.55; }
-.room-invite, .room-board, .room-welcome, .room-results {
+.room-copy, .room-controls p, .room-final-note, .room-confirm p { color: var(--room-quiet); line-height: 1.55; }
+.room-invite, .room-board, .room-results {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -80,7 +80,7 @@
 }
 .room-invite { padding: clamp(22px, 3vw, 40px); text-align: center; }
 .room-invite .room-kicker { justify-content: center; }
-.room-invite .room-kicker, .room-board .room-kicker, .room-welcome .room-kicker, .room-results .room-kicker { color: #565078; }
+.room-invite .room-kicker, .room-board .room-kicker, .room-results .room-kicker { color: #565078; }
 .room-big-code { margin: 11px 0 8px; color: var(--purple); font: 800 clamp(45px, 5.8vw, 84px)/1 var(--room-display); letter-spacing: .01em; white-space: nowrap; }
 .room-big-code span { margin-left: .16em; }
 .room-invite .room-copy { margin: 0 auto 19px; max-width: 42ch; color: #494367; }
@@ -103,7 +103,7 @@
 .room-list { padding: 21px 0 3px; }
 .room-list-heading, .room-roster-info { padding: 0 20px; }
 .room-list-title { gap: 10px; }
-.room-icon-tile, .room-welcome-icon, .room-trophy { display: inline-grid; place-items: center; color: var(--purple); background: #ece7ff; border-radius: 7px; }
+.room-icon-tile, .room-trophy { display: inline-grid; place-items: center; color: var(--purple); background: #ece7ff; border-radius: 7px; }
 .room-icon-tile { width: 35px; height: 35px; }
 .room-list h2 { font-size: 25px; }
 .room-roster-info { gap: 8px; margin: 13px 0 17px; color: var(--room-quiet); font: 400 11px/1.4 var(--room-mono); }
@@ -113,11 +113,8 @@
 .room-roster { max-height: min(62vh, 740px); list-style: none; overflow-y: auto; scrollbar-color: #b7aece transparent; margin: 0; padding: 0; }
 .room-roster li { display: flex; align-items: center; gap: 11px; padding: 11px 20px; border-top: 1px solid var(--line); min-height: 62px; }
 .room-self { background: #f0edfd; }
-.room-avatar, .room-rank { display: inline-grid; place-items: center; flex: 0 0 32px; height: 32px; border-radius: 10px; font: 700 13px/1 var(--room-mono); }
-.room-avatar { background: #ece8ff; color: #4a359d; text-transform: uppercase; }
-.room-avatar.tone-1 { background: #e0f5e8; color: #1b6646; }
-.room-avatar.tone-2 { background: #fce6ed; color: #873858; }
-.room-avatar.tone-3 { background: #e4f0fb; color: #355e83; }
+.room-rank { display: inline-grid; place-items: center; flex: 0 0 32px; height: 32px; border-radius: 10px; font: 700 13px/1 var(--room-mono); }
+.roster-pig { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 14px; background: #f4f0fa; }
 .room-rank { color: var(--room-quiet); background: #f2effa; }
 .room-first { color: var(--purple); background: var(--mint); }
 .room-name { flex: 1; min-width: 0; }
@@ -132,10 +129,10 @@
 .room-roster-empty svg { margin-bottom: 4px; color: var(--purple); }
 .room-roster-empty strong { color: var(--text); font-weight: 600; }
 .room-roster-empty span { font-size: 14px; }
-.room-welcome, .room-results { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 38px 24px; }
-.room-welcome-icon, .room-trophy { width: 64px; height: 64px; background: #d4f4e7; color: var(--purple); }
-.room-welcome h2, .room-results h2 { max-width: 100%; font-size: clamp(36px, 4vw, 56px); overflow-wrap: anywhere; }
-.room-welcome p, .room-results p { margin: 0; color: #494367; }
+.room-results { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 38px 24px; }
+.room-trophy { width: 64px; height: 64px; background: #d4f4e7; color: var(--purple); }
+.room-results h2 { max-width: 100%; font-size: clamp(36px, 4vw, 56px); overflow-wrap: anywhere; }
+.room-results p { margin: 0; color: #494367; }
 .room-trophy { background: #fff2c7; color: #795215; }
 .room-results h2 { color: var(--purple); }
 .room-results p { font: 400 18px/1.5 var(--room-mono); }

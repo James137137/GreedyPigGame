@@ -64,7 +64,8 @@ body:has(.host-live) .site-header { display: none; }
 .host-link span { margin-left: .3em; }
 .host-link:hover, .host-toolbar-button:hover { text-decoration: underline; text-underline-offset: .2em; }
 .host-leaders { padding: 0 clamp(16px, 2.05vw, 38px); margin: 0; list-style: none; }
-.host-leaders li { display: grid; grid-template-columns: 1.55em minmax(0, 1fr) auto; align-items: center; gap: .4em; min-height: clamp(48px, 7.4dvh, 100px); font-size: clamp(20px, 2.65vw, 48px); letter-spacing: -.025em; font-weight: 700; }
+.host-leaders li { display: grid; grid-template-columns: 1em auto minmax(0, 1fr) auto; align-items: center; gap: .4em; min-height: clamp(48px, 7.4dvh, 100px); font-size: clamp(20px, 2.65vw, 48px); letter-spacing: -.025em; font-weight: 700; }
+.leader-pig { display: block; width: clamp(32px, 3.4vw, 62px); height: auto; }
 .host-leaders li + li { border-top: 1px solid var(--board-edge); }
 .host-leaders li > span { font-size: .8em; color: #645a80; }
 .host-leaders li > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

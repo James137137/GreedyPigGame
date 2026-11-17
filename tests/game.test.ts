@@ -1,13 +1,14 @@
 import { microphoneLevel, noiseProgress, quietStreakMs } from '../shared/noise';
+import { DEFAULT_FACE, isPigFace } from '../shared/avatar';
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addPlayer, applyAction, createGame, GameError, normalizeNickname, ranks, rollIfDue, type Action, type GameState } from "../shared/game";
+import { addPlayer, applyAction, createGame, GameError, normalizeNickname, ranks, rollIfDue, type GameState } from "../shared/game";
 
 function classroom(rounds = 2, names = ["Aroha", "Hemi"]): GameState {
   return names.reduce((state, name) => addPlayer(state, name, name), createGame("012345", rounds));
 }
 
-function teacher(state: GameState, type: Exclude<Action["type"], "remove" | "bank" | "configure" | "autoRoll" | "noisePenalty" | "quietRestore" | "quietMode">, die?: number) {
+function teacher(state: GameState, type: "start" | "next" | "roll" | "pause" | "resume" | "finish", die?: number) {
   return applyAction(state, "teacher", { type, turn: state.turn }, die === undefined ? undefined : () => die);
 }
 
@@ -34,6 +35,30 @@ function bank(state: GameState, name: string, turn = state.turn) {
 function fails(code: string) {
   return (err: unknown) => err instanceof GameError && err.code === code;
 }
+
+test("students can independently save pig faces before the game starts", () => {
+  const lobby = classroom();
+  const action = { type: "avatar", turn: lobby.turn, avatar: { ...DEFAULT_FACE, hat: "cap", freckles: true } } as const;
+  const first = applyAction(lobby, "Aroha", action);
+  assert.equal(first.turn, lobby.turn);
+  assert.deepEqual(first.players[0].avatar, action.avatar);
+  assert.equal(first.players[1], lobby.players[1]);
+  const both = applyAction(first, "Hemi", { ...action, avatar: { ...DEFAULT_FACE, skin: "cocoa" } });
+  const started = teacher(both, "start");
+  assert.equal(started.players[1].avatar?.skin, "cocoa");
+  assert.deepEqual(started.players[0].avatar, action.avatar);
+  assert.throws(() => applyAction(started, "Hemi", action), fails("stale_turn"));
+  assert.throws(() => applyAction(started, "Hemi", { ...action, turn: started.turn }), fails("avatar_closed"));
+  for (const actor of ["teacher", "unknown"]) assert.throws(() => applyAction(lobby, actor, action), fails("student_only"));
+});
+
+test("avatar choices require exactly the supported fields and their predefined values", () => {
+  assert.ok(isPigFace(DEFAULT_FACE));
+  for (const face of [null, [], {}, { ...DEFAULT_FACE, hat: "my words" }, { ...DEFAULT_FACE, eyes: "#00ff00" },
+    { ...DEFAULT_FACE, freckles: 1 }, { ...DEFAULT_FACE, label: "extra" }]) {
+    assert.equal(isPigFace(face), false);
+  }
+});
 
 test("rooms preserve leading zeros, default to five rounds and validate code/round count", () => {
   assert.equal(createGame("000001").rounds, 5);

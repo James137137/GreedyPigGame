@@ -67,6 +67,17 @@ test('HTTP validation, identity, atomic commands and recovery on the local Worke
   const roster = await teacher.waitFor((s, online) => s.players.length >= 3 && online.includes(cam.id), 'student roster');
   assert.deepEqual(roster.players.map(p => p.name).sort(), ['Alice', 'Bob', 'Cam']);
 
+  const aliceFace = { skin: 'cocoa', eyes: 'green', hat: 'beanie', scarf: 'mint', jewelry: 'gold-hoops', freckles: true };
+  await t.test('saving a student avatar broadcasts it to the whole lobby', async () => {
+    const action = { type: 'avatar', turn: roster.turn, avatar: aliceFace };
+    await aliceClient.sendAction(action);
+    for (const client of [teacher, bobClient, aliceClient]) {
+      const snapshot = await client.waitFor(s => s.players.find(p => p.id === alice.id)?.avatar, 'avatar update');
+      assert.deepEqual(snapshot.players.find(p => p.id === alice.id).avatar, aliceFace);
+      assert.equal(snapshot.turn, roster.turn);
+    }
+  });
+
   await t.test('teacher and student sessions are distinct and the room code alone grants no access', async () => {
     assert.equal((await request(origin, path)).status, 401);
     assert.equal((await (await request(origin, path, { cookie: host.cookie })).json()).role, 'teacher');
@@ -115,6 +126,7 @@ test('HTTP validation, identity, atomic commands and recovery on the local Worke
     assert.equal(aliceClient.state.deathNumber, 6);
     assert.equal(player.score, pot);
     assert.equal(player.status, 'banked');
+    assert.deepEqual(player.avatar, aliceFace);
     assert.equal(aliceClient.state.players.length, 3);
     await assert.rejects(aliceClient.sendAction({ type: 'remove', playerId: bob.id, turn: teacher.state.turn }));
   });
@@ -164,6 +176,9 @@ test('SQLite and session receipts survive forced Durable Object hibernation', { 
     const learner = await joinRoom(isolated, host.code, 'Aroha');
     const student = await RoomClient.connect(isolated, learner);
     clients.push(student);
+    const avatar = { skin: 'cocoa', eyes: 'green', hat: 'beanie', scarf: 'mint', jewelry: 'gold-hoops', freckles: true };
+    await student.sendAction({ type: 'avatar', avatar, turn: student.state.turn });
+    await teacher.waitFor(s => s.players.some(p => p.id === learner.id && p.avatar?.hat === 'beanie'), 'avatar on teacher roster');
     await teacher.sendAction({ type: 'configure', rounds: 20, deathNumber: 2, turn: teacher.state.turn });
     await teacher.waitFor(s => s.rounds === 20 && s.deathNumber === 2, 'custom rules');
     const playable = await reachPositivePot(teacher);
@@ -183,6 +198,7 @@ test('SQLite and session receipts survive forced Durable Object hibernation', { 
     assert.equal(freshStudent.state.rounds, 20);
     assert.equal(freshStudent.state.phase, 'between');
     assert.equal(freshStudent.state.players.find(player => player.id === learner.id).score, playable.pot);
+    assert.deepEqual(freshStudent.state.players.find(player => player.id === learner.id).avatar, avatar);
     const after = await teacherStep(teacher, 'next');
     assert.equal(after.round, playable.round + 1);
   } finally {

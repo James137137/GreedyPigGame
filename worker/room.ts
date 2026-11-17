@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { addPlayer, applyAction, rollIfDue, createGame, GameError, type Action, type GameState } from '../shared/game';
 import { InvalidRequest, isRecord, json, problem, readForm } from './http';
+import { isPigFace } from '../shared/avatar';
 
 const LIFETIME = 24 * 60 * 60 * 1000;
 const COOKIE_NAME = 'gp_session';
@@ -25,13 +26,19 @@ function sessionInfo(code: string, id: string) {
   return { code, role: id === 'teacher' ? 'teacher' : 'student', id };
 }
 
+const actionParameters: Record<string, readonly string[]> = {
+  noisePenalty: ['expectedLosses'], quietRestore: ['expectedLosses'],
+  quietMode: ['enabled'], autoRoll: ['enabled'], configure: ['rounds', 'deathNumber'],
+  remove: ['playerId'], avatar: ['avatar'],
+};
+
 function actionFrom(input: unknown): Action {
   if (!isRecord(input) || typeof input.turn !== 'number' || !Number.isSafeInteger(input.turn) || input.turn < 0) {
     throw new InvalidRequest(400, 'Invalid game action.');
   }
   const { type, turn } = input;
   // Accept only the parameters belonging to this command.
-  const fields = (type === 'noisePenalty' || type === 'quietRestore') ? ['expectedLosses'] : type === 'quietMode' || type === 'autoRoll' ? ['enabled'] : type === 'configure' ? ['rounds', 'deathNumber'] : type === 'remove' ? ['playerId'] : [];
+  const fields = typeof type === 'string' && Object.hasOwn(actionParameters, type) ? actionParameters[type] : [];
   if (Object.keys(input).some(key => key !== 'type' && key !== 'turn' && !fields.includes(key))) {
     throw new InvalidRequest(400, 'Unexpected game action parameters.');
   }
@@ -41,6 +48,9 @@ function actionFrom(input: unknown): Action {
     case 'remove':
       if (typeof input.playerId === 'string' && input.playerId.length <= 64) return { type, turn, playerId: input.playerId };
       break;
+    case 'avatar':
+      if (!isPigFace(input.avatar)) throw new InvalidRequest(400, 'Choose from the available pig face options.');
+      return { type, turn, avatar: input.avatar };
     case 'quietRestore':
     case 'noisePenalty':
       if (typeof input.expectedLosses === 'number' && Number.isSafeInteger(input.expectedLosses)) return { type, turn, expectedLosses: input.expectedLosses };

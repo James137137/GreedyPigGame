@@ -1,4 +1,5 @@
 import { nicknameIsBlocked } from "./nickname-filter";
+import { isPigFace, type PigFace } from "./avatar";
 
 export const MAX_PLAYERS = 100;
 export const MAX_ROUNDS = 20;
@@ -11,6 +12,7 @@ export interface Player {
   score: number;
   status: "waiting" | "active" | "banked" | "bust";
   banked: number;
+  avatar?: PigFace;
 }
 
 export interface GameState {
@@ -41,6 +43,7 @@ export type Action =
   | { type: "quietMode"; enabled: boolean; turn: number }
   | { type: "noisePenalty" | "quietRestore"; expectedLosses: number; turn: number }
   | { type: "configure"; rounds: number; deathNumber: number; turn: number }
+  | { type: "avatar"; avatar: PigFace; turn: number }
   | { type: "remove"; playerId: string; turn: number };
 
 export class GameError extends Error {
@@ -157,12 +160,21 @@ function transition(state: GameState, actor: string, action: Action, rollDie: ()
   if (!action || typeof action !== "object" || !Number.isSafeInteger(action.turn)) {
     throw new GameError("invalid_action", "Invalid game action.", 400);
   }
-  if (action.type !== "bank" && actor !== "teacher") {
+  if (action.type !== "bank" && action.type !== "avatar" && actor !== "teacher") {
     throw new GameError("teacher_only", "Only the teacher can do that.", 403);
   }
   if (action.turn !== state.turn) throw new GameError("stale_turn", "The game has moved on. Check the latest board.");
 
   switch (action.type) {
+    case "avatar": {
+      if (state.phase !== "lobby") throw new GameError("avatar_closed", "Pig faces can be changed in the waiting room.");
+      if (!state.players.some(player => player.id === actor)) {
+        throw new GameError("student_only", "Join as a student to choose a pig face.", 403);
+      }
+      if (!isPigFace(action.avatar)) throw new GameError("invalid_avatar", "Choose from the available pig face options.", 400);
+      const players = state.players.map(player => player.id === actor ? { ...player, avatar: { ...action.avatar } } : player);
+      return { ...state, players };
+    }
     case "autoRoll":
       if (state.phase === "finished" || typeof action.enabled !== "boolean") throw new GameError("invalid_auto_roll", "Auto-roll cannot be changed right now.");
       return { ...state, autoRoll: action.enabled, turn: state.turn + 1 };

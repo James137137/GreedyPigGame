@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditStamp } from './EditStamp'
 import { QuietMonitor } from './QuietMonitor'
+import { AvatarEditor } from './AvatarEditor'
+import { PigAvatar } from './PigAvatar'
+import { DEFAULT_FACE } from '../shared/avatar'
 import { AUTO_INTERVAL_SECONDS, MAX_ROUNDS, QUIET_MAX_ROUNDS, ranks, type Action, type GameState, type Player } from '../shared/game'
 import './room.css'
 import './board.css'
@@ -107,10 +110,11 @@ function PlayerList({ state, online, teacher, ownId, disabled, onRemove }: {
     </div>
     <div className="room-roster-info"><span className="room-led" />{state.players.filter(p => online.has(p.id)).length} online <span aria-hidden="true">/</span> {state.players.length} joined</div>
     {sorted.length === 0 ? <div className="room-roster-empty"><Icon name="people" size={32} /><strong>Waiting for players</strong><span>Nicknames appear here as students join.</span></div> : <ul className="room-roster">
-      {sorted.map((p, index) => {
+      {sorted.map(p => {
         const rank = 'rank' in p ? Number(p.rank) : undefined
         return <li key={p.id} className={p.id === ownId ? 'room-self' : undefined}>
-          {lobby ? <span className={'room-avatar tone-' + (index % 4)} aria-hidden="true">{Array.from(p.name)[0]}</span> : <span className={'room-rank' + (rank === 1 ? ' room-first' : '')}>{rank}</span>}
+          {!lobby && <span className={'room-rank' + (rank === 1 ? ' room-first' : '')}>{rank}</span>}
+          <PigAvatar avatar={p.avatar ?? DEFAULT_FACE} className="roster-pig" />
           <div className="room-name"><strong>{p.name}{p.id === ownId && <small>you</small>}</strong><span>{!online.has(p.id) ? 'Offline' : lobby ? 'Connected' : playerStatus(p, state.phase === 'finished')}</span></div>
           {!lobby && <strong className="room-score">{p.score}<small> pts</small></strong>}
           {manage && teacher && state.phase !== 'finished' && <button type="button" className="room-icon-button" aria-label={'Remove ' + p.name} title={'Remove ' + p.name} disabled={disabled} onClick={() => onRemove(p)}><Icon name="remove" size={16} /></button>}
@@ -198,7 +202,7 @@ function HostScoreboard({ state, onView }: { state: GameState; onView: () => voi
   return <section className="host-card host-scores" aria-label="Scoreboard">
     <header className="host-score-heading"><h2>Scoreboard</h2><button type="button" className="host-link" onClick={onView}>View all <span aria-hidden="true">↗</span></button></header>
     {leaders.length ? <ol className="host-leaders">
-      {leaders.map(p => <li key={p.id}><span aria-label={'Rank ' + p.rank}>{p.rank}</span><strong>{p.name}</strong><b aria-label={points(p.score)}>{p.score}</b></li>)}
+      {leaders.map(p => <li key={p.id}><span aria-label={'Rank ' + p.rank}>{p.rank}</span><PigAvatar avatar={p.avatar ?? DEFAULT_FACE} className="leader-pig" /><strong title={p.name}>{p.name}</strong><b aria-label={points(p.score)}>{p.score}</b></li>)}
     </ol> : <p>No players in this room.</p>}
   </section>
 }
@@ -313,7 +317,7 @@ export function Room({ state, online, identity, connected, busy, error, onAction
       try { await root.current?.requestFullscreen?.() } catch { /* The in-page projector layout also fills the viewport. */ }
     }
   }
-  function act(type: Exclude<Action['type'], 'remove' | 'configure' | 'autoRoll' | 'quietMode' | 'noisePenalty' | 'quietRestore'>) { onAction({ type, turn: state.turn }) }
+  function act(type: 'bank' | 'finish' | 'pause' | 'resume') { onAction({ type, turn: state.turn }) }
   function confirm() {
     if (!choice || disabled) return
     if (choice.kind === 'finish') {
@@ -350,7 +354,9 @@ export function Room({ state, online, identity, connected, busy, error, onAction
       <div className={hostBoard ? 'host-grid' + (state.quietMode && !finished ? ' with-noise' : '') : 'room-grid'}>
         <div className={hostBoard ? 'host-main' : 'room-main'}>
           {hostBoard && <HostCards state={state} disabled={disabled} onAction={onAction} onNewRoom={onNewRoom} />}
-          {lobby && (teacher ? <Invite code={state.code} /> : <section className="room-box room-welcome"><span className="room-welcome-icon"><Icon name="check" size={32} /></span><span className="room-kicker">Joined the game</span><h2>You’re in, {player?.name ?? 'player'}!</h2><p>Stay on this screen. Your teacher will start the first roll.</p></section>)}
+          {lobby && teacher && <Invite code={state.code} />}
+          {lobby && !teacher && player && <AvatarEditor key={player.id} name={player.name} savedFace={player.avatar}
+            busy={busy} connected={connected} error={error} onSave={avatar => onAction({ type: 'avatar', avatar, turn: state.turn })} />}
           {teacher && lobby && <label className="room-auto"><input type="checkbox" checked={state.quietMode} disabled={disabled} onChange={e => onAction({ type: 'quietMode', enabled: e.target.checked, turn: state.turn })} /> Quiet Mode</label>}
           {teacher && state.quietMode && !finished && <div className={hostBoard ? 'host-noise' : undefined}><QuietMonitor key={state.code} state={state} connected={connected} busy={busy} onAction={onAction} settingsTarget={hostBoard ? noiseControls : null} /></div>}
           {teacher && lobby && <label className="room-auto"><input type="checkbox" checked={state.autoRoll} disabled={disabled} onChange={e => onAction({ type: 'autoRoll', enabled: e.target.checked, turn: state.turn })} /> Auto-roll every {AUTO_INTERVAL_SECONDS} seconds and start new rounds</label>}

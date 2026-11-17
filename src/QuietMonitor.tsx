@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './quiet.css';
 import { NOISE_WINDOW_MS, type Action, type GameState } from '../shared/game';
@@ -12,7 +12,13 @@ interface Props {
   settingsTarget?: HTMLElement | null;
 }
 
+// SVG coordinates along the usable length of the stem, from the bulb to the cap.
+function thermometerY(percent: number) {
+  return 104 - 97 * percent / 100;
+}
+
 export function QuietMonitor(props: Props) {
+  const liquidClip = useId();
   const [enabled, setEnabled] = useState(false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState('');
@@ -166,13 +172,21 @@ export function QuietMonitor(props: Props) {
       <span className={'quiet-status' + (reacting ? ' quiet-break' : listening && !paused ? ' quiet-live' : '')} role="status"><i aria-hidden="true" />{status}</span>
     </header>
     <div className="quiet-display">
-      <div className={'quiet-thermometer' + (!listening ? ' quiet-off' : level > limit ? ' quiet-loud' : '')}
+      <svg className={'quiet-thermometer' + (!listening ? ' quiet-off' : level > limit ? ' quiet-loud' : '')}
+        viewBox="0 0 60 150"
         role="meter" aria-label="Room noise" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level}
         aria-valuetext={listening ? level + ' percent' : 'Microphone off'}>
-        <div className="quiet-track"><div className="quiet-fill" style={{ height: level + '%' }} /></div>
-        <div className="quiet-bulb" />
-        <div className="quiet-marker" style={{ bottom: limit + '%' }} />
-      </div>
+        <defs>
+          <clipPath id={liquidClip}>
+            <path d="M23 109V14a7 7 0 0 1 14 0v95a17 17 0 1 1-14 0Z" />
+          </clipPath>
+        </defs>
+        <path className="quiet-glass" d="M18 105V15a12 12 0 0 1 24 0v90a22 22 0 1 1-24 0Z" />
+        <g clipPath={`url(#${liquidClip})`}>
+          <rect className="quiet-fill" width="60" height="150" style={{ transform: `translateY(${thermometerY(level)}px)` }} />
+        </g>
+        <line className="quiet-marker" x1="12" x2="48" y1={thermometerY(limit)} y2={thermometerY(limit)} />
+      </svg>
       <div className="quiet-readings">
         <div className="quiet-reading">
           <span>Room noise</span>

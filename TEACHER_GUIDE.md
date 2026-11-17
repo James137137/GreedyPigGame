@@ -9,6 +9,8 @@ You need the deployed HTTPS game address, a teacher laptop and a browser on each
 3. Compare the **online / joined** count and class roster with the students present. Nicknames must be unique within the room. The game screens typed nicknames with a built-in word filter. Ask a student whose nickname is rejected to try another. The filter can miss a joke or a name used to target someone. To remove an entry, choose **Manage**, select the cross beside the nickname, then confirm **Remove player**. This removes their score and ends access to that player session.
 4. Select **Start game** when everyone is ready. Tell students they get one decision to bank per round, then they sit out until the next round.
 
+While students wait, they can open **Face** or **Accessories** under **Your pig**, try different looks, and select **Save pig**. Their face appears beside their nickname in the roster and standings. Students can also keep the default pig and play straight away.
+
 ## Play a round
 
 For timed play, tick **Auto-roll every 5 seconds and start new rounds** in the lobby, or tick **Auto-roll** in the top bar during play. Everyone sees the countdown. Each round starts with a full five seconds, and banking stays open until the deadline. Pause stops the clock; resuming gives everyone a fresh five seconds. Start the first round yourself. After a bust or when everyone banks, the next round starts automatically after five seconds. Untick auto-roll during that countdown to hold the class between rounds.
